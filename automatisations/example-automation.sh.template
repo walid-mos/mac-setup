@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+
+# ============================================================================
+# Example Automation Template
+# Replace this description with what your automation does
+# ============================================================================
+
+set -euo pipefail
+
+# Source libraries (for standalone execution)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+if [[ -f "$PROJECT_ROOT/lib/config.sh" ]]; then
+  source "$PROJECT_ROOT/lib/config.sh"
+  source "$PROJECT_ROOT/lib/logger.sh"
+  source "$PROJECT_ROOT/lib/helpers.sh"
+  source "$PROJECT_ROOT/lib/toml-parser.sh"
+fi
+
+# ============================================================================
+# Main Automation Function
+# ============================================================================
+# Convention: automation_<script-name-with-underscores>
+# Example: For "backup-configs.sh" → "automation_backup_configs"
+automation_example_automation() {
+  log_info "Starting example automation..."
+
+  # ----------------------------------
+  # Step 1: Pre-flight checks
+  # ----------------------------------
+  log_step "Running pre-flight checks..."
+
+  # Check if a required tool is installed
+  if ! command -v some_required_tool &> /dev/null; then
+    log_error "Required tool 'some_required_tool' is not installed"
+    log_info "Install it with: brew install some_required_tool"
+    return 1
+  fi
+
+  # Check if a required file/directory exists
+  if [[ ! -d "$HOME/.config/myapp" ]]; then
+    log_warning "Configuration directory not found, creating it..."
+    if [[ "$DRY_RUN" != "true" ]]; then
+      mkdir -p "$HOME/.config/myapp"
+    fi
+  fi
+
+  log_success "Pre-flight checks passed"
+
+  # ----------------------------------
+  # Step 2: Read optional configuration from TOML
+  # ----------------------------------
+  log_step "Reading configuration..."
+
+  # Example: Read a custom setting from TOML
+  # In mac-setup.toml:
+  # [automations.example-automation]
+  # custom_path = "/path/to/something"
+  # enabled_feature = true
+
+  local custom_path
+  custom_path=$(parse_toml_value "$TOML_CONFIG" "automations.example-automation.custom_path")
+
+  if [[ -n "$custom_path" ]]; then
+    log_info "Using custom path from config: $custom_path"
+  else
+    # Use default value if not specified in config
+    custom_path="$HOME/default/path"
+    log_info "Using default path: $custom_path"
+  fi
+
+  # ----------------------------------
+  # Step 3: Perform main automation tasks
+  # ----------------------------------
+  log_step "Performing main tasks..."
+
+  # Support dry-run mode
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log_info "[DRY RUN] Would execute: some_command --option value"
+    log_info "[DRY RUN] Would create file: $custom_path/output.txt"
+    log_success "Dry run completed"
+    return 0
+  fi
+
+  # Actual operations (only run when NOT in dry-run)
+  if some_command --option value; then
+    log_success "Command executed successfully"
+  else
+    log_error "Command failed"
+    return 1
+  fi
+
+  # Example: Create a file with error handling
+  if echo "content" > "$custom_path/output.txt" 2>/dev/null; then
+    log_success "File created: $custom_path/output.txt"
+  else
+    log_error "Failed to create file"
+    return 1
+  fi
+
+  # ----------------------------------
+  # Step 4: Verify results (idempotency check)
+  # ----------------------------------
+  log_step "Verifying results..."
+
+  if [[ -f "$custom_path/output.txt" ]]; then
+    log_success "Verification passed"
+  else
+    log_warning "Verification failed, but continuing..."
+  fi
+
+  # ----------------------------------
+  # Completion
+  # ----------------------------------
+  log_success "Example automation completed successfully"
+  return 0
+}
+
+# ============================================================================
+# Standalone Execution
+# ============================================================================
+# This allows the script to be run directly:
+# ./automatisations/example-automation.sh
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  automation_example_automation
+fi

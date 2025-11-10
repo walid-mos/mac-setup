@@ -157,6 +157,21 @@ florist-bouquet-preview = "clients/fleurs-aujourdhui"
 # my-special-project = "clients/autre-client"
 
 # -----------------------------------------------------------------------------
+# Automatisations
+# -----------------------------------------------------------------------------
+# Custom automation scripts that run after all main modules
+[automations]
+# Master switch to enable/disable all automations
+enabled = true
+
+# Individual automation control (uncomment and set to false to disable)
+# Format: <script-name-without-.sh> = true/false
+# Example:
+# backup-databases = true
+# sync-configs = false
+# install-fonts = true
+
+# -----------------------------------------------------------------------------
 # Additional Configuration
 # -----------------------------------------------------------------------------
 # Note: Directory paths, stow behavior, macOS defaults, and other settings

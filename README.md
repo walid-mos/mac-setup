@@ -82,21 +82,23 @@ Created automatically based on your TOML configuration:
 
 ## Installation Modules
 
-The setup is divided into 11 independent modules:
+The setup is divided into 12 independent modules:
 
 | Module | Name | Description |
 |--------|------|-------------|
 | 01 | Prerequisites | Xcode Command Line Tools |
 | 02 | Homebrew | Package manager installation |
-| 03 | Stow Dotfiles | Clone dotfiles repo + dynamic stow installation |
+| 03 | Script Dependencies | Install dasel and jq for TOML parsing |
 | 04 | Curl Tools | Claude CLI, fnm, PNPM |
 | 05 | Brew Packages | Formula packages (ripgrep, neovim, etc.) |
 | 06 | Brew Casks | GUI applications (VSCode, Ghostty, etc.) |
-| 07 | Git Configuration | User name, email, global settings |
-| 08 | Directory Structure | **Dynamic** folder creation from TOML |
-| 09 | Clone Repositories | **Intelligent** cloning with destination mapping |
-| 10 | Oh My Zsh | ZSH framework + custom plugins |
-| 11 | macOS Defaults | System preferences (Dock, Finder, etc.) |
+| 07 | Oh My Zsh | ZSH framework + custom plugins |
+| 08 | Stow Dotfiles | Clone dotfiles repo + dynamic stow installation |
+| 09 | Git Configuration | User name, email, global settings |
+| 10 | Directory Structure | **Dynamic** folder creation from TOML |
+| 11 | Clone Repositories | **Intelligent** cloning with destination mapping |
+| 12 | macOS Defaults | System preferences (Dock, Finder, etc.) |
+| 13 | Automatisations | **Custom automation scripts** (see below) |
 
 ## Usage
 
@@ -117,23 +119,26 @@ The setup is divided into 11 independent modules:
 
 ### Run Specific Module
 ```bash
-# Only install stow dotfiles
-./setup.sh --module 03
-
 # Only install brew packages
-./setup.sh --module 05
+./setup.sh --module brew-packages
+
+# Only run automatisations
+./setup.sh --module automatisations
+
+# Only clone repositories
+./setup.sh --module clone-repos
 ```
 
 ### Skip Modules
 ```bash
 # Skip repository cloning
-./setup.sh --skip 09
+./setup.sh --skip clone-repos
 
-# Skip macOS defaults
-./setup.sh --skip-macos
+# Skip automatisations
+./setup.sh --skip automatisations
 
 # Skip multiple modules
-./setup.sh --skip 05 --skip 06 --skip 09
+./setup.sh --skip brew-packages --skip brew-casks
 ```
 
 ### Stow Options
@@ -176,6 +181,12 @@ igocreate = "clients/igocreate"
 # Specific repo overrides
 [repositories.repo_overrides]
 florist-bouquet-preview = "clients/fleurs-aujourdhui"
+
+# Custom automatisations
+[automations]
+enabled = true
+backup-configs = true
+install-fonts = false
 ```
 
 ### Shell Configuration (`lib/config.sh`)
@@ -240,31 +251,84 @@ When stowing dotfiles, the script handles conflicts:
 - **Adopt mode** (`--adopt`): Merges existing configs into dotfiles repo
 - **Fail mode** (`--no-backup`): Stops on conflicts with clear error messages
 
+## Custom Automatisations
+
+The `automatisations/` directory allows you to add **custom automation scripts** that run after all main modules complete.
+
+### Features
+- **Automatic Discovery**: All `.sh` files are detected and executed
+- **Alphabetical Order**: Scripts run in alphabetical order
+- **TOML Configuration**: Enable/disable globally or per-script
+- **Interactive Error Handling**: Prompts whether to continue if a script fails
+- **Full Module Support**: Access to all helper functions and logging
+
+### Quick Start
+
+1. **Create a script** in `automatisations/`:
+   ```bash
+   cp automatisations/example-automation.sh.template automatisations/my-task.sh
+   ```
+
+2. **Edit the script** following the template structure:
+   ```bash
+   automation_my_task() {
+     log_info "Running my custom task..."
+     # Your automation logic here
+   }
+   ```
+
+3. **Configure in TOML** (optional):
+   ```toml
+   [automations]
+   enabled = true
+   my-task = true  # Enable this specific automation
+   ```
+
+4. **Run setup**:
+   ```bash
+   ./setup.sh  # Runs all modules including automatisations
+   ```
+
+### Example Use Cases
+- Backup existing configurations before applying new ones
+- Install custom fonts from a specific directory
+- Set up project-specific environment variables
+- Create additional symlinks for specific tools
+- Run cleanup tasks or optimizations
+
+For detailed documentation and examples, see `automatisations/README.md`.
+
 ## Project Structure
 
 ```
 mac-setup/
-├── setup.sh                # Main orchestrator script
-├── mac-setup.toml         # TOML configuration (packages, apps)
-├── README.md              # This file
-├── lib/                   # Library functions
-│   ├── config.sh         # Centralized variables
-│   ├── logger.sh         # Colored logging utilities
-│   ├── helpers.sh        # Common helper functions
-│   ├── validators.sh     # Pre-flight checks
-│   └── toml-parser.sh    # TOML parsing (dasel or fallback)
-└── modules/               # Installation modules
-    ├── 01-prerequisites.sh
-    ├── 02-homebrew.sh
-    ├── 03-stow-dotfiles.sh
-    ├── 04-curl-tools.sh
-    ├── 05-brew-packages.sh
-    ├── 06-brew-casks.sh
-    ├── 07-git-config.sh
-    ├── 08-directories.sh
-    ├── 09-clone-repos.sh
-    ├── 10-oh-my-zsh.sh
-    └── 11-macos-defaults.sh
+├── setup.sh                   # Main orchestrator script
+├── mac-setup.toml            # TOML configuration (packages, apps)
+├── README.md                 # This file
+├── lib/                      # Library functions
+│   ├── config.sh            # Centralized variables
+│   ├── logger.sh            # Colored logging utilities
+│   ├── helpers.sh           # Common helper functions
+│   ├── validators.sh        # Pre-flight checks
+│   └── toml-parser.sh       # TOML parsing (dasel or fallback)
+├── modules/                  # Installation modules
+│   ├── prerequisites.sh
+│   ├── homebrew.sh
+│   ├── script-dependencies.sh
+│   ├── curl-tools.sh
+│   ├── brew-packages.sh
+│   ├── brew-casks.sh
+│   ├── oh-my-zsh.sh
+│   ├── stow-dotfiles.sh
+│   ├── git-config.sh
+│   ├── directories.sh
+│   ├── clone-repos.sh
+│   ├── macos-defaults.sh
+│   └── automatisations.sh   # Dynamic automation loader
+└── automatisations/          # Custom automation scripts
+    ├── README.md            # Detailed documentation
+    ├── .gitkeep             # Track empty directory
+    └── example-automation.sh.template  # Template for new scripts
 ```
 
 ## Logging

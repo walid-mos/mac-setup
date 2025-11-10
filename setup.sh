@@ -48,6 +48,8 @@ source "$SCRIPT_DIR/modules/directories.sh"
 source "$SCRIPT_DIR/modules/clone-repos.sh"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/macos-defaults.sh"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/modules/automatisations.sh"
 
 # =============================================================================
 # Parse Command Line Arguments
@@ -305,6 +307,13 @@ main() {
 
   # macOS Defaults
   if run_module "macos-defaults" "macOS Defaults" "module_macos_defaults"; then
+    ((successful_modules++))
+  else
+    ((failed_modules++))
+  fi
+
+  # Custom Automatisations (runs after all main modules)
+  if run_module "automatisations" "Automatisations" "module_automatisations"; then
     ((successful_modules++))
   else
     ((failed_modules++))
