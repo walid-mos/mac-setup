@@ -1,0 +1,163 @@
+# =============================================================================
+# Mac Setup Configuration (TOML)
+# =============================================================================
+# This file defines WHAT to install (packages, apps, tools).
+# For HOW to install (behavior, paths, etc.), see lib/config.sh
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Curl-based Tools
+# -----------------------------------------------------------------------------
+# Tools installed via curl scripts (URLs can be customized)
+[curl_tools]
+claude_cli = "https://storage.googleapis.com/anthropic-release-public/claude-cli/latest/install.sh"
+fnm = "https://fnm.vercel.app/install"
+pnpm = "https://get.pnpm.io/install.sh"
+
+# -----------------------------------------------------------------------------
+# Git Configuration
+# -----------------------------------------------------------------------------
+[git]
+user_name = "walid-mos"
+user_email = "pro.walid.mostefaoui@gmail.com"
+push_auto_setup_remote = true
+
+# -----------------------------------------------------------------------------
+# Homebrew Packages (Formula)
+# -----------------------------------------------------------------------------
+[brew.packages]
+# Core development tools
+core_tools = [
+  "stow",
+  "fzf",
+  "ripgrep",
+  "neovim",
+  "gh",
+  "glab",
+  "jq",
+  "tree",
+  "wget",
+  "dasel"
+]
+
+# Terminal and multiplexers
+terminals = [
+  "ghostty",
+  "zellij",
+  "tmux"
+]
+
+# Shell enhancements
+shell = [
+  "starship",
+  "fastfetch",
+  "bat",
+  "eza"
+]
+
+# Docker and containers
+docker = [
+  "docker",
+  "colima",
+  "lazydocker"
+]
+
+# Development tools
+dev = [
+  "git-delta",
+  "yamllint",
+  "node",
+  "python@3.11"
+]
+
+# Programming languages and compilers
+languages = [
+  "rust",
+  "go",
+  "odin"
+]
+
+# -----------------------------------------------------------------------------
+# Homebrew Casks (Applications)
+# -----------------------------------------------------------------------------
+[brew.casks]
+# Web browsers
+browsers = [
+  "firefox",
+  "google-chrome"
+]
+
+# Productivity apps
+productivity = [
+  "raycast",
+  "rectangle",
+  "missive",
+  "linear-linear",
+  "notion"
+]
+
+# Media and communication
+media = [
+  "iina",
+  "discord",
+  "spotify"
+]
+
+# Development tools
+dev = [
+  "visual-studio-code",
+  "cursor",
+  "postman",
+  "docker",
+  "warp"
+]
+
+# Creative tools
+creative = [
+  "adobe-creative-cloud",
+  "figma"
+]
+
+# Utilities
+utilities = [
+  "nordvpn",
+  "1password",
+  "the-unarchiver"
+]
+
+# -----------------------------------------------------------------------------
+# Repository Cloning
+# -----------------------------------------------------------------------------
+[repositories]
+# GitHub organizations to clone repos from (interactive selection with fzf)
+github_orgs = [
+  "nextnode",
+  "walid-mos"
+]
+
+# GitLab groups to clone repos from (interactive selection with fzf)
+gitlab_groups = [
+  "NextnodeSolutions",
+  "igocreate"
+]
+
+# Mapping: organization/group → destination folder
+# Repos from these orgs will be cloned to ~/Development/<destination>/
+[repositories.destinations]
+nextnode = "nextnode"
+walid-mos = "saas"
+NextnodeSolutions = "nextnode"
+igocreate = "clients/igocreate"
+
+# Exceptions: specific repo → custom destination
+# Overrides the organization mapping for specific repos
+[repositories.repo_overrides]
+florist-bouquet-preview = "clients/fleurs-aujourdhui"
+# Add more exceptions as needed:
+# my-special-project = "clients/autre-client"
+
+# -----------------------------------------------------------------------------
+# Additional Configuration
+# -----------------------------------------------------------------------------
+# Note: Directory paths, stow behavior, macOS defaults, and other settings
+# are configured in lib/config.sh for easier modification without TOML parsing.

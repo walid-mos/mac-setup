@@ -1,0 +1,433 @@
+#!/usr/bin/env bash
+
+# =============================================================================
+# Module 10: Clone Repositories
+# =============================================================================
+# Clone repositories from GitHub/GitLab with intelligent destination mapping.
+# Requires jq (Module 02) for JSON parsing.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Get destination for a repository
+# -----------------------------------------------------------------------------
+get_repo_destination() {
+  local repo_name="$1"
+  local org_or_group="$2"
+
+  # Check repo_overrides first
+  local override_dest
+  override_dest=$(awk -v repo="$repo_name" '
+    /^\[repositories\.repo_overrides\]/ { in_section=1; next }
+    in_section && /^\[/ { exit }
+    in_section && $0 ~ "^"repo" *= *" {
+      match($0, /"([^"]+)"/, arr)
+      print arr[1]
+      exit
+    }
+  ' "$TOML_CONFIG")
+
+  if [[ -n "$override_dest" ]]; then
+    echo "$override_dest"
+    return 0
+  fi
+
+  # Check organization/group mapping
+  local org_dest
+  org_dest=$(awk -v org="$org_or_group" '
+    /^\[repositories\.destinations\]/ { in_section=1; next }
+    in_section && /^\[/ { exit }
+    in_section && $0 ~ "^"org" *= *" {
+      match($0, /"([^"]+)"/, arr)
+      print arr[1]
+      exit
+    }
+  ' "$TOML_CONFIG")
+
+  if [[ -n "$org_dest" ]]; then
+    echo "$org_dest"
+    return 0
+  fi
+
+  # No mapping found
+  return 1
+}
+
+# -----------------------------------------------------------------------------
+# Interactive destination selection
+# -----------------------------------------------------------------------------
+select_destination_interactive() {
+  local repo_name="$1"
+
+  # Get all available destinations from TOML
+  local destinations=()
+
+  while IFS= read -r dest; do
+    [[ -z "$dest" ]] && continue
+    destinations+=("$dest")
+  done < <(awk '
+    /^\[repositories\.destinations\]/ { in_section=1; next }
+    /^\[repositories\.repo_overrides\]/ { in_section=1; next }
+    in_section && /^\[/ { exit }
+    in_section && /=/ {
+      match($0, /"([^"]+)"/, arr)
+      if (arr[1]) print arr[1]
+    }
+  ' "$TOML_CONFIG" | sort -u)
+
+  # Add custom option
+  destinations+=("[Nouveau dossier...]")
+
+  echo ""
+  log_question "Aucun mapping trouvé pour '$repo_name'. Où cloner ce repo ?"
+  echo ""
+
+  # Use fzf for selection
+  local selected
+  selected=$(printf '%s\n' "${destinations[@]}" | fzf \
+    --height=40% \
+    --border \
+    --header="Sélectionner la destination pour $repo_name" \
+    --prompt="Destination> ")
+
+  if [[ -z "$selected" ]]; then
+    return 1
+  fi
+
+  if [[ "$selected" == "[Nouveau dossier...]" ]]; then
+    read -r -p "Entrer le chemin (relatif à ~/Development/): " custom_dest
+    echo "$custom_dest"
+  else
+    echo "$selected"
+  fi
+
+  return 0
+}
+
+# -----------------------------------------------------------------------------
+# Main module function
+# -----------------------------------------------------------------------------
+module_10_clone_repos() {
+  log_section "Module 10: Cloning Repositories"
+
+  # Verify prerequisites
+  require_tool jq "jq not found. Please run module 02 (Script Dependencies) first"
+
+  # Check if fzf is installed
+  if ! command_exists fzf; then
+    log_warning "fzf not found - installing via Homebrew..."
+    install_brew_package "fzf" || {
+      log_error "Failed to install fzf - repository cloning will be skipped"
+      return 1
+    }
+  fi
+
+  # Get GitHub organizations from TOML
+  local github_orgs
+  github_orgs=$(parse_toml_array "$TOML_CONFIG" "repositories.github_orgs" 2>/dev/null)
+
+  # Get GitLab groups from TOML
+  local gitlab_groups
+  gitlab_groups=$(parse_toml_array "$TOML_CONFIG" "repositories.gitlab_groups" 2>/dev/null)
+
+  local total_cloned=0
+
+  # Process GitHub organizations
+  if [[ -n "$github_orgs" ]]; then
+    log_subsection "GitHub Organizations"
+
+    while IFS= read -r org; do
+      [[ -z "$org" ]] && continue
+
+      log_info "Processing GitHub organization: $org"
+
+      if ! command_exists gh; then
+        log_error "GitHub CLI (gh) not installed - skipping GitHub repos"
+        log_info "Install with: brew install gh"
+        break
+      fi
+
+      # Check if authenticated
+      if ! gh auth status &>/dev/null; then
+        log_warning "GitHub CLI not authenticated"
+
+        if ask_yes_no "Authenticate with GitHub now?" "y"; then
+          log_info "Starting GitHub authentication..."
+          gh auth login || {
+            log_error "GitHub authentication failed - skipping GitHub repositories"
+            break
+          }
+          log_success "GitHub authentication successful"
+        else
+          log_info "Skipping GitHub repositories (not authenticated)"
+          break
+        fi
+      fi
+
+      # Fetch all repositories from organization
+      log_info "Fetching repositories from $org..."
+
+      local repos
+      repos=$(gh repo list "$org" --limit 1000 --json name,sshUrl,description 2>/dev/null)
+
+      if [[ -z "$repos" ]] || [[ "$repos" == "[]" ]]; then
+        log_warning "No repositories found for organization: $org"
+        continue
+      fi
+
+      # Build repo list with destinations for preview
+      local repo_list_with_dest=""
+      local repo_data=()
+
+      while IFS= read -r repo_json; do
+        local repo_name
+        local repo_desc
+        local ssh_url
+
+        repo_name=$(echo "$repo_json" | jq -r '.name')
+        repo_desc=$(echo "$repo_json" | jq -r '.description // "No description"')
+        ssh_url=$(echo "$repo_json" | jq -r '.sshUrl')
+
+        # Get destination for this repo
+        local dest
+        dest=$(get_repo_destination "$repo_name" "$org")
+
+        if [[ -z "$dest" ]]; then
+          dest="[NO MAPPING]"
+        fi
+
+        # Store repo data for later
+        repo_data+=("$repo_name|$ssh_url|$dest")
+
+        # Format for fzf display
+        repo_list_with_dest+=$(printf "%-40s [%-30s] %s\n" "$repo_name" "$dest" "$repo_desc")
+      done < <(echo "$repos" | jq -c '.[]')
+
+      if [[ -z "$repo_list_with_dest" ]]; then
+        log_warning "No repositories to display for $org"
+        continue
+      fi
+
+      # Interactive selection with fzf
+      log_info "Select repositories to clone (Tab=select, Enter=confirm):"
+      echo ""
+
+      local selected_repos
+      selected_repos=$(echo "$repo_list_with_dest" | fzf --multi \
+        --height=80% \
+        --border \
+        --header="Select repos to clone from $org (Tab=multi-select, Enter=confirm)" \
+        --preview="echo {}" \
+        --preview-window=up:3:wrap)
+
+      if [[ -z "$selected_repos" ]]; then
+        log_info "No repositories selected for $org"
+        continue
+      fi
+
+      # Clone selected repositories
+      while IFS= read -r selected_line; do
+        local repo_name
+        repo_name=$(echo "$selected_line" | awk '{print $1}')
+
+        # Find repo data
+        local repo_info
+        repo_info=$(printf '%s\n' "${repo_data[@]}" | grep "^$repo_name|")
+
+        if [[ -z "$repo_info" ]]; then
+          log_error "Failed to find data for: $repo_name"
+          continue
+        fi
+
+        local ssh_url dest
+        ssh_url=$(echo "$repo_info" | cut -d'|' -f2)
+        dest=$(echo "$repo_info" | cut -d'|' -f3)
+
+        # Handle repos without mapping
+        if [[ "$dest" == "[NO MAPPING]" ]]; then
+          dest=$(select_destination_interactive "$repo_name")
+          if [[ -z "$dest" ]]; then
+            log_warning "Skipped: $repo_name (no destination selected)"
+            continue
+          fi
+        fi
+
+        local repo_path="$DEV_ROOT/$dest/$repo_name"
+
+        if [[ -d "$repo_path/.git" ]]; then
+          log_verbose "Repository already exists: $repo_name"
+          continue
+        fi
+
+        log_info "Cloning: $repo_name → $dest/"
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+          log_dry_run "Would clone: $org/$repo_name -> $repo_path"
+          ((total_cloned++))
+        else
+          # Ensure destination directory exists
+          ensure_directory "$DEV_ROOT/$dest"
+
+          # Clone repository
+          timeout "$GIT_CLONE_TIMEOUT" git clone "$ssh_url" "$repo_path" || {
+            log_error "Failed to clone: $repo_name"
+            continue
+          }
+
+          log_success "Cloned: $repo_name"
+          ((total_cloned++))
+        fi
+      done <<< "$selected_repos"
+
+    done <<< "$github_orgs"
+  fi
+
+  # Process GitLab groups
+  if [[ -n "$gitlab_groups" ]]; then
+    log_subsection "GitLab Groups"
+
+    while IFS= read -r group; do
+      [[ -z "$group" ]] && continue
+
+      log_info "Processing GitLab group: $group"
+
+      if ! command_exists glab; then
+        log_error "GitLab CLI (glab) not installed - skipping GitLab repos"
+        log_info "Install with: brew install glab"
+        break
+      fi
+
+      # Check if authenticated
+      if ! glab auth status &>/dev/null; then
+        log_warning "GitLab CLI not authenticated"
+
+        if ask_yes_no "Authenticate with GitLab now?" "y"; then
+          log_info "Starting GitLab authentication..."
+          glab auth login || {
+            log_error "GitLab authentication failed - skipping GitLab repositories"
+            break
+          }
+          log_success "GitLab authentication successful"
+        else
+          log_info "Skipping GitLab repositories (not authenticated)"
+          break
+        fi
+      fi
+
+      # Fetch repositories
+      log_info "Fetching repositories from $group..."
+
+      local repos
+      repos=$(glab repo list --group "$group" --per-page 100 2>/dev/null)
+
+      if [[ -z "$repos" ]]; then
+        log_warning "No repositories found for group: $group"
+        continue
+      fi
+
+      # Parse and add destinations
+      local repo_list_with_dest=""
+      local repo_names=()
+
+      while IFS= read -r repo_line; do
+        [[ -z "$repo_line" ]] && continue
+        [[ "$repo_line" =~ ^GROUP ]] && continue  # Skip header
+
+        local repo_name
+        repo_name=$(echo "$repo_line" | awk '{print $1}')
+
+        # Get destination
+        local dest
+        dest=$(get_repo_destination "$repo_name" "$group")
+
+        if [[ -z "$dest" ]]; then
+          dest="[NO MAPPING]"
+        fi
+
+        repo_names+=("$repo_name|$dest")
+        repo_list_with_dest+=$(printf "%-40s [%-30s]\n" "$repo_name" "$dest")
+      done < <(echo "$repos" | tail -n +2)
+
+      if [[ -z "$repo_list_with_dest" ]]; then
+        continue
+      fi
+
+      # Interactive selection
+      log_info "Select repositories to clone (Tab=select, Enter=confirm):"
+      echo ""
+
+      local selected_repos
+      selected_repos=$(echo "$repo_list_with_dest" | fzf --multi \
+        --height=80% \
+        --border \
+        --header="Select repos to clone from $group" \
+        --preview="echo {}")
+
+      if [[ -z "$selected_repos" ]]; then
+        log_info "No repositories selected for $group"
+        continue
+      fi
+
+      # Clone selected repositories
+      while IFS= read -r selected_line; do
+        local repo_name
+        repo_name=$(echo "$selected_line" | awk '{print $1}')
+
+        # Find destination
+        local repo_info dest
+        repo_info=$(printf '%s\n' "${repo_names[@]}" | grep "^$repo_name|")
+        dest=$(echo "$repo_info" | cut -d'|' -f2)
+
+        # Handle repos without mapping
+        if [[ "$dest" == "[NO MAPPING]" ]]; then
+          dest=$(select_destination_interactive "$repo_name")
+          if [[ -z "$dest" ]]; then
+            log_warning "Skipped: $repo_name (no destination selected)"
+            continue
+          fi
+        fi
+
+        local repo_path="$DEV_ROOT/$dest/$repo_name"
+
+        if [[ -d "$repo_path/.git" ]]; then
+          log_verbose "Repository already exists: $repo_name"
+          continue
+        fi
+
+        log_info "Cloning: $repo_name → $dest/"
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+          log_dry_run "Would clone: $group/$repo_name -> $repo_path"
+          ((total_cloned++))
+        else
+          # Ensure destination directory exists
+          ensure_directory "$DEV_ROOT/$dest"
+
+          # Clone using glab
+          glab repo clone "$group/$repo_name" "$repo_path" || {
+            log_error "Failed to clone: $repo_name"
+            continue
+          }
+
+          log_success "Cloned: $repo_name"
+          ((total_cloned++))
+        fi
+      done <<< "$selected_repos"
+
+    done <<< "$gitlab_groups"
+  fi
+
+  # Summary
+  echo ""
+  if [[ $total_cloned -eq 0 ]]; then
+    log_info "No repositories were cloned"
+  else
+    log_success "Successfully cloned $total_cloned repositories"
+  fi
+
+  return 0
+}
+
+# Run module if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  module_10_clone_repos
+fi
