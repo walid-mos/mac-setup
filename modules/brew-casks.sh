@@ -9,12 +9,20 @@
 module_brew_casks() {
   log_section " Installing Homebrew Casks"
 
-  # Get all cask categories from TOML
-  local categories=("browsers" "productivity" "media" "dev" "creative" "utilities")
+  # Dynamically detect all cask categories from TOML
+  local categories
+  categories=$(dasel -f "$TOML_CONFIG" -r toml 'brew.casks' 2>/dev/null | awk -F'=' '{print $1}' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+
+  if [[ -z "$categories" ]]; then
+    log_warning "No brew cask categories found in TOML configuration"
+    return 0
+  fi
+
   local all_casks=()
 
   # Collect all casks from different categories
-  for category in "${categories[@]}"; do
+  while IFS= read -r category; do
+    [[ -z "$category" ]] && continue
     local casks
     casks=$(parse_toml_array "$TOML_CONFIG" "brew.casks.$category" 2>/dev/null)
 
@@ -48,7 +56,7 @@ module_brew_casks() {
         fi
       done <<< "$casks"
     fi
-  done
+  done <<< "$categories"
 
   # Summary
   if [[ ${#all_casks[@]} -eq 0 ]]; then

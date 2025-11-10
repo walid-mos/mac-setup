@@ -3,113 +3,96 @@
 # =============================================================================
 # Curl-based Tools
 # =============================================================================
-# Install tools via curl scripts: Claude CLI, fnm, PNPM.
+# Install tools via curl commands from TOML configuration.
+# Commands are executed as-is without modification.
 # =============================================================================
 
 module_curl_tools() {
-  log_section " Installing Curl-based Tools"
+  log_section "📦 Installing Curl-based Tools"
 
-  local tools_to_install=()
+  # Dynamically detect all curl tools from TOML
+  local tools
+  tools=$(dasel -f "$TOML_CONFIG" -r toml 'curl_tools' 2>/dev/null | awk -F'=' '{print $1}' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
 
-  # Read tool URLs from TOML config
-  local claude_url
-  local fnm_url
-  local pnpm_url
-
-  claude_url="$(get_toml_value "curl_tools.claude_cli" 2>/dev/null || echo "$CLAUDE_CLI_INSTALL_URL")"
-  fnm_url="$(get_toml_value "curl_tools.fnm" 2>/dev/null || echo "$FNM_INSTALL_URL")"
-  pnpm_url="$(get_toml_value "curl_tools.pnpm" 2>/dev/null || echo "$PNPM_INSTALL_URL")"
-
-  # Install Claude CLI
-  log_subsection "Claude CLI"
-
-  if command_exists claude; then
-    log_success "Claude CLI is already installed"
-    claude --version 2>/dev/null || true
-  else
-    log_info "Installing Claude CLI from $claude_url"
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-      log_dry_run "Would install Claude CLI"
-    else
-      bash <(curl -fsSL "$claude_url") || {
-        log_error "Failed to install Claude CLI"
-      }
-
-      if command_exists claude; then
-        log_success "Claude CLI installed successfully"
-      else
-        log_warning "Claude CLI installation completed but command not found in PATH"
-      fi
-    fi
+  if [[ -z "$tools" ]]; then
+    log_warning "No curl tools found in TOML configuration"
+    return 0
   fi
 
-  # Install fnm (Fast Node Manager)
-  log_subsection "fnm (Fast Node Manager)"
+  local installed_count=0
+  local total_count=0
 
-  if command_exists fnm; then
-    log_success "fnm is already installed"
-    fnm --version 2>/dev/null || true
-  else
-    log_info "Installing fnm from $fnm_url"
+  # Install each tool
+  while IFS= read -r tool_name; do
+    [[ -z "$tool_name" ]] && continue
+    ((total_count++))
+
+    log_subsection "$tool_name"
+
+    # Get the full command from TOML
+    local install_command
+    install_command=$(dasel -f "$TOML_CONFIG" -r toml "curl_tools.$tool_name" 2>/dev/null)
+
+    if [[ -z "$install_command" ]]; then
+      log_error "No installation command found for: $tool_name"
+      continue
+    fi
+
+    # Check if already installed (simple command check)
+    local binary_name
+    case "$tool_name" in
+      claude_cli)
+        binary_name="claude"
+        ;;
+      oh_my_zsh)
+        if [[ -d "$HOME/.oh-my-zsh" ]]; then
+          log_success "oh-my-zsh is already installed"
+          continue
+        fi
+        binary_name=""
+        ;;
+      *)
+        binary_name="$tool_name"
+        ;;
+    esac
+
+    if [[ -n "$binary_name" ]] && command_exists "$binary_name"; then
+      log_success "$tool_name is already installed"
+      "$binary_name" --version 2>/dev/null || true
+      ((installed_count++))
+      continue
+    fi
+
+    log_info "Installing $tool_name..."
+    log_verbose "Command: $install_command"
 
     if [[ "$DRY_RUN" == "true" ]]; then
-      log_dry_run "Would install fnm"
-    else
-      curl -fsSL "$fnm_url" | bash || {
-        log_error "Failed to install fnm"
-      }
-
-      # Source fnm in current shell
-      if [[ -f "$HOME/.bashrc" ]]; then
-        # shellcheck disable=SC1090
-        source "$HOME/.bashrc" 2>/dev/null || true
-      fi
-
-      if command_exists fnm; then
-        log_success "fnm installed successfully"
-        fnm --version
-      else
-        log_warning "fnm installation completed but command not found in PATH"
-        log_info "You may need to restart your shell or source ~/.bashrc"
-      fi
+      log_dry_run "Would execute: $install_command"
+      continue
     fi
-  fi
 
-  # Install PNPM
-  log_subsection "PNPM"
+    # Execute the installation command
+    if eval "$install_command"; then
+      log_success "$tool_name installed successfully"
+      ((installed_count++))
 
-  if command_exists pnpm; then
-    log_success "PNPM is already installed"
-    pnpm --version 2>/dev/null || true
+      # Show version if possible
+      if [[ -n "$binary_name" ]] && command_exists "$binary_name"; then
+        "$binary_name" --version 2>/dev/null || true
+      fi
+    else
+      log_error "Failed to install $tool_name"
+      log_warning "Command failed: $install_command"
+    fi
+  done <<< "$tools"
+
+  # Summary
+  if [[ $total_count -eq 0 ]]; then
+    log_warning "No curl tools configured"
   else
-    log_info "Installing PNPM from $pnpm_url"
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-      log_dry_run "Would install PNPM"
-    else
-      curl -fsSL "$pnpm_url" | sh - || {
-        log_error "Failed to install PNPM"
-      }
-
-      # Source PNPM in current shell
-      if [[ -d "$HOME/Library/pnpm" ]]; then
-        export PNPM_HOME="$HOME/Library/pnpm"
-        export PATH="$PNPM_HOME:$PATH"
-      fi
-
-      if command_exists pnpm; then
-        log_success "PNPM installed successfully"
-        pnpm --version
-        log_info "Note: Node.js version management is handled by fnm (installed above)"
-      else
-        log_warning "PNPM installation completed but command not found in PATH"
-        log_info "You may need to restart your shell"
-      fi
-    fi
+    log_success "Processed $installed_count/$total_count curl tools"
   fi
 
-  log_success "Curl-based tools installation completed"
   return 0
 }
 

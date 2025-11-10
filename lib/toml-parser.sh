@@ -31,7 +31,7 @@ parse_toml_array_with_dasel() {
   local file="$1"
   local key="$2"
 
-  dasel -f "$file" -r toml -m "$key.[*]" 2>/dev/null | grep -v "^$" || echo ""
+  dasel -f "$file" -r toml "$key.all()" 2>/dev/null | sed "s/^'//" | sed "s/'$//" || echo ""
 }
 
 # -----------------------------------------------------------------------------

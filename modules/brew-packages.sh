@@ -9,12 +9,20 @@
 module_brew_packages() {
   log_section " Installing Homebrew Packages"
 
-  # Get all package categories from TOML
-  local categories=("core_tools" "terminals" "shell" "docker" "dev" "languages")
+  # Dynamically detect all package categories from TOML
+  local categories
+  categories=$(dasel -f "$TOML_CONFIG" -r toml 'brew.packages' 2>/dev/null | awk -F'=' '{print $1}' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+
+  if [[ -z "$categories" ]]; then
+    log_warning "No brew package categories found in TOML configuration"
+    return 0
+  fi
+
   local all_packages=()
 
   # Collect all packages from different categories
-  for category in "${categories[@]}"; do
+  while IFS= read -r category; do
+    [[ -z "$category" ]] && continue
     local packages
     packages=$(parse_toml_array "$TOML_CONFIG" "brew.packages.$category" 2>/dev/null)
 
@@ -48,7 +56,7 @@ module_brew_packages() {
         fi
       done <<< "$packages"
     fi
-  done
+  done <<< "$categories"
 
   # Summary
   if [[ ${#all_packages[@]} -eq 0 ]]; then

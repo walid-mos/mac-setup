@@ -8,11 +8,13 @@
 # -----------------------------------------------------------------------------
 # Curl-based Tools
 # -----------------------------------------------------------------------------
-# Tools installed via curl scripts (URLs can be customized)
+# Full installation commands (executed as-is by the curl-tools module)
 [curl_tools]
-claude_cli = "https://storage.googleapis.com/anthropic-release-public/claude-cli/latest/install.sh"
-fnm = "https://fnm.vercel.app/install"
-pnpm = "https://get.pnpm.io/install.sh"
+claude_cli = 'curl -fsSL https://claude.ai/install.sh | bash'
+fnm = 'curl -fsSL https://fnm.vercel.app/install | bash'
+pnpm = 'curl -fsSL https://get.pnpm.io/install.sh | sh -'
+oh_my_zsh = 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"'
+rust = 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh'
 
 # -----------------------------------------------------------------------------
 # Git Configuration
@@ -42,9 +44,7 @@ core_tools = [
 
 # Terminal and multiplexers
 terminals = [
-  "ghostty",
-  "zellij",
-  "tmux"
+  "ghostty"
 ]
 
 # Shell enhancements
@@ -71,10 +71,26 @@ dev = [
 ]
 
 # Programming languages and compilers
-languages = [
-  "rust",
-  "go",
-  "odin"
+languages = []
+
+# Modern Rust CLI replacements (productivity boosters)
+rust_modern_tools = [
+  "fd",        # Modern find replacement
+  "zoxide",    # Smart directory jumper
+  "sd",        # Intuitive find-replace
+  "just",      # Command runner
+  "tokei",     # Code statistics
+  "procs"      # Modern process viewer
+]
+
+# System monitoring and analysis
+monitoring = [
+  "btop"       # Beautiful system monitor
+]
+
+# Git workflow tools
+git_tools = [
+  "lazygit"    # TUI for git operations
 ]
 
 # -----------------------------------------------------------------------------
@@ -90,39 +106,28 @@ browsers = [
 # Productivity apps
 productivity = [
   "raycast",
-  "rectangle",
-  "missive",
-  "linear-linear",
-  "notion"
+  "linear-linear"
 ]
 
 # Media and communication
 media = [
   "iina",
-  "discord",
-  "spotify"
+  "discord"
 ]
 
 # Development tools
 dev = [
-  "visual-studio-code",
-  "cursor",
-  "postman",
-  "docker",
-  "warp"
+  "visual-studio-code"
 ]
 
 # Creative tools
-creative = [
-  "adobe-creative-cloud",
-  "figma"
-]
+creative = []
 
 # Utilities
 utilities = [
   "nordvpn",
-  "1password",
-  "the-unarchiver"
+  "the-unarchiver",
+  "stats"      # Menu bar system monitor
 ]
 
 # -----------------------------------------------------------------------------
@@ -131,22 +136,20 @@ utilities = [
 [repositories]
 # GitHub organizations to clone repos from (interactive selection with fzf)
 github_orgs = [
-  "nextnode",
+  "NextNodeSolutions",
   "walid-mos"
 ]
 
 # GitLab groups to clone repos from (interactive selection with fzf)
 gitlab_groups = [
-  "NextnodeSolutions",
   "igocreate"
 ]
 
 # Mapping: organization/group → destination folder
 # Repos from these orgs will be cloned to ~/Development/<destination>/
 [repositories.destinations]
-nextnode = "nextnode"
+NextNodeSolutions = "nextnode"
 walid-mos = "saas"
-NextnodeSolutions = "nextnode"
 igocreate = "clients/igocreate"
 
 # Exceptions: specific repo → custom destination

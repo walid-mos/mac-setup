@@ -54,11 +54,10 @@ module_oh_my_zsh() {
       continue
     fi
 
-    # Check if plugin has a repository URL
-    # Handle plugin repositories
+    # Check if plugin has a repository URL in the associative array
     local plugin_repo=""
-    if [[ "$plugin" == "zsh-shift-select" ]]; then
-      plugin_repo="https://github.com/jirutka/zsh-shift-select.git"
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]] && [[ -n "${OH_MY_ZSH_PLUGIN_REPOS[$plugin]:-}" ]]; then
+      plugin_repo="${OH_MY_ZSH_PLUGIN_REPOS[$plugin]}"
     fi
 
     if [[ -n "$plugin_repo" ]]; then

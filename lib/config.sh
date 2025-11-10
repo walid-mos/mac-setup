@@ -58,15 +58,12 @@ OH_MY_ZSH_DIR="${OH_MY_ZSH_DIR:-$HOME/.config/zsh/.oh-my-zsh}"
 OH_MY_ZSH_CUSTOM="${OH_MY_ZSH_CUSTOM:-$OH_MY_ZSH_DIR/custom}"
 OH_MY_ZSH_PLUGINS=(
   "git"
-  "zsh-shift-select"
 )
 
 # Custom plugin repositories
 # Note: Using associative array - requires bash 4+
 if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-  declare -A OH_MY_ZSH_PLUGIN_REPOS=(
-    ["zsh-shift-select"]="https://github.com/jirutka/zsh-shift-select.git"
-  )
+  declare -A OH_MY_ZSH_PLUGIN_REPOS=()
 fi
 
 # -----------------------------------------------------------------------------
