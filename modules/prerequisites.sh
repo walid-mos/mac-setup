@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 01: Prerequisites
+# Prerequisites Module
 # =============================================================================
 # Install Xcode Command Line Tools and other system prerequisites.
 # =============================================================================
 
-module_00_prerequisites() {
-  log_section "Module 01: Installing Prerequisites"
+module_prerequisites() {
+  log_section "Prerequisites: Installing Xcode Command Line Tools"
 
   # Check if Xcode CLI tools are already installed
   if xcode-select -p &>/dev/null; then
@@ -70,5 +70,5 @@ module_00_prerequisites() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_00_prerequisites
+  module_prerequisites
 fi

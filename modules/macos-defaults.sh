@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 11: macOS Defaults
+# macOS Defaults
 # =============================================================================
 # Configure macOS system preferences.
 # =============================================================================
 
-module_12_macos_defaults() {
-  log_section "Module 11: Configuring macOS Defaults"
+module_macos_defaults() {
+  log_section " Configuring macOS Defaults"
 
   if [[ "$APPLY_MACOS_DEFAULTS" != "true" ]]; then
     log_info "Skipping macOS defaults (APPLY_MACOS_DEFAULTS=false)"
@@ -117,5 +117,5 @@ module_12_macos_defaults() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_12_macos_defaults
+  module_macos_defaults
 fi

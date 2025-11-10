@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 08: Directory Structure
+# Directory Structure
 # =============================================================================
 # Create development directory structure dynamically from TOML configuration.
 # =============================================================================
 
-module_09_directories() {
-  log_section "Module 08: Creating Directory Structure"
+module_directories() {
+  log_section " Creating Directory Structure"
 
   # Ensure Development root exists
   ensure_directory "$DEV_ROOT" || {
@@ -139,5 +139,5 @@ module_09_directories() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_09_directories
+  module_directories
 fi

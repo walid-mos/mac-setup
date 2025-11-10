@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 04: Stow Dotfiles
+# Stow Dotfiles
 # =============================================================================
 # Clone dotfiles repository and install all packages dynamically with stow.
-# Requires Git (Module 00) and Stow (installed via Homebrew Module 01) to be available.
+# Requires Git (prerequisites module) and Stow (brew-packages module) to be available.
 # =============================================================================
 
-module_04_stow_dotfiles() {
-  log_section "Module 04: Setting Up Dotfiles with Stow"
+module_stow_dotfiles() {
+  log_section "Stow Dotfiles: Setting Up Configuration Files"
 
   # Verify prerequisites
-  require_tool git "Git not found. Please run module 00 (Prerequisites/Xcode CLI) first"
-  require_tool stow "GNU Stow not found. Please run module 06 (Brew Packages) first or install stow manually"
+  require_tool git "Git not found. Please run prerequisites module first"
+  require_tool stow "GNU Stow not found. Please run brew-packages module first or install stow manually"
 
   log_success "Prerequisites verified (git, stow)"
 
@@ -220,5 +220,5 @@ module_04_stow_dotfiles() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_04_stow_dotfiles
+  module_stow_dotfiles
 fi

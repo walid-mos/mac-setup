@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 04: Curl-based Tools
+# Curl-based Tools
 # =============================================================================
 # Install tools via curl scripts: Claude CLI, fnm, PNPM.
 # =============================================================================
 
-module_05_curl_tools() {
-  log_section "Module 04: Installing Curl-based Tools"
+module_curl_tools() {
+  log_section " Installing Curl-based Tools"
 
   local tools_to_install=()
 
@@ -115,5 +115,5 @@ module_05_curl_tools() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_05_curl_tools
+  module_curl_tools
 fi

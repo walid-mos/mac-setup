@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 10: Clone Repositories
+# Clone Repositories
 # =============================================================================
 # Clone repositories from GitHub/GitLab with intelligent destination mapping.
 # Requires jq (Module 02) for JSON parsing.
@@ -106,11 +106,11 @@ select_destination_interactive() {
 # -----------------------------------------------------------------------------
 # Main module function
 # -----------------------------------------------------------------------------
-module_10_clone_repos() {
-  log_section "Module 10: Cloning Repositories"
+module_clone_repos() {
+  log_section " Cloning Repositories"
 
   # Verify prerequisites
-  require_tool jq "jq not found. Please run module 02 (Script Dependencies) first"
+  require_tool jq "jq not found. Please run script-dependencies module first"
 
   # Check if fzf is installed
   if ! command_exists fzf; then
@@ -429,5 +429,5 @@ module_10_clone_repos() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_10_clone_repos
+  module_clone_repos
 fi

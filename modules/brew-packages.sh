@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 05: Brew Packages
+# Brew Packages
 # =============================================================================
 # Install Homebrew formula packages from TOML configuration.
 # =============================================================================
 
-module_06_brew_packages() {
-  log_section "Module 05: Installing Homebrew Packages"
+module_brew_packages() {
+  log_section " Installing Homebrew Packages"
 
   # Get all package categories from TOML
   local categories=("core_tools" "terminals" "shell" "docker" "dev" "languages")
@@ -62,5 +62,5 @@ module_06_brew_packages() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_06_brew_packages
+  module_brew_packages
 fi

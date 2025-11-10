@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 06: Brew Casks
+# Brew Casks
 # =============================================================================
 # Install Homebrew cask applications from TOML configuration.
 # =============================================================================
 
-module_07_brew_casks() {
-  log_section "Module 06: Installing Homebrew Casks"
+module_brew_casks() {
+  log_section " Installing Homebrew Casks"
 
   # Get all cask categories from TOML
   local categories=("browsers" "productivity" "media" "dev" "creative" "utilities")
@@ -62,5 +62,5 @@ module_07_brew_casks() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_07_brew_casks
+  module_brew_casks
 fi

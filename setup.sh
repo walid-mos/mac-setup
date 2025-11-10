@@ -25,29 +25,29 @@ source "$SCRIPT_DIR/lib/toml-parser.sh"
 
 # Source all modules
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/00-prerequisites.sh"
+source "$SCRIPT_DIR/modules/prerequisites.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/01-homebrew.sh"
+source "$SCRIPT_DIR/modules/homebrew.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/02-script-dependencies.sh"
+source "$SCRIPT_DIR/modules/script-dependencies.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/04-stow-dotfiles.sh"
+source "$SCRIPT_DIR/modules/curl-tools.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/05-curl-tools.sh"
+source "$SCRIPT_DIR/modules/brew-packages.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/06-brew-packages.sh"
+source "$SCRIPT_DIR/modules/brew-casks.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/07-brew-casks.sh"
+source "$SCRIPT_DIR/modules/oh-my-zsh.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/08-git-config.sh"
+source "$SCRIPT_DIR/modules/stow-dotfiles.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/09-directories.sh"
+source "$SCRIPT_DIR/modules/git-config.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/10-clone-repos.sh"
+source "$SCRIPT_DIR/modules/directories.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/11-oh-my-zsh.sh"
+source "$SCRIPT_DIR/modules/clone-repos.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/12-macos-defaults.sh"
+source "$SCRIPT_DIR/modules/macos-defaults.sh"
 
 # =============================================================================
 # Parse Command Line Arguments
@@ -66,29 +66,30 @@ OPTIONS:
   -m, --module MODULE    Run only specific module (e.g., 01, 03, 05)
   -s, --skip MODULE      Skip specific module (can be used multiple times)
   --skip-macos           Skip macOS defaults configuration
-  --skip-repos           Skip repository cloning
+  --skip-repos           Skip repository cloning (same as --skip clone-repos)
   --no-backup            Don't backup existing configurations
   --adopt                Adopt existing configs with stow instead of backing up
 
 EXAMPLES:
-  $0                     Run full installation
-  $0 --dry-run          Preview installation without making changes
-  $0 --module 03        Run only module 03 (stow dotfiles)
-  $0 --skip 09          Run all modules except 09 (clone repos)
-  $0 --verbose          Run with detailed logging
+  $0                              Run full installation
+  $0 --dry-run                    Preview installation without making changes
+  $0 --module stow-dotfiles       Run only stow dotfiles module
+  $0 --skip clone-repos           Run all modules except clone repos
+  $0 --verbose                    Run with detailed logging
 
-MODULES:
-  01 - Prerequisites (Xcode CLI tools)
-  02 - Homebrew installation
-  03 - Stow dotfiles (dynamic package detection)
-  04 - Curl-based tools (Claude CLI, fnm, PNPM)
-  05 - Brew packages
-  06 - Brew casks
-  07 - Git configuration
-  08 - Directory structure
-  09 - Clone repositories (interactive fzf)
-  10 - Oh My Zsh
-  11 - macOS defaults
+MODULES (in execution order):
+  prerequisites       - Xcode CLI tools (provides git)
+  homebrew            - Homebrew installation
+  script-dependencies - Script tools (dasel, jq)
+  curl-tools          - Curl-based tools (Claude CLI, fnm, pnpm)
+  brew-packages       - Homebrew packages (stow, neovim, etc.)
+  brew-casks          - Homebrew applications
+  oh-my-zsh           - Oh My Zsh framework and plugins
+  stow-dotfiles       - Stow dotfiles (dynamic package detection)
+  git-config          - Git configuration
+  directories         - Directory structure
+  clone-repos         - Clone repositories (interactive fzf)
+  macos-defaults      - macOS system defaults
 
 CONFIGURATION:
   Edit mac-setup.toml to customize packages, apps, and settings
@@ -129,7 +130,7 @@ parse_arguments() {
         shift
         ;;
       --skip-repos)
-        SKIP_MODULES+=("09")
+        SKIP_MODULES+=("clone-repos")
         shift
         ;;
       --no-backup)
@@ -221,22 +222,22 @@ main() {
   start_time=$(date +%s)
 
   # Execute modules in the correct order
-  # Module 00: Prerequisites (Xcode CLI - provides git)
-  if run_module "00" "Prerequisites" "module_00_prerequisites"; then
+  # Prerequisites (Xcode CLI - provides git)
+  if run_module "prerequisites" "Prerequisites" "module_prerequisites"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 01: Homebrew (provides brew)
-  if run_module "01" "Homebrew" "module_01_homebrew"; then
+  # Homebrew (provides brew)
+  if run_module "homebrew" "Homebrew" "module_homebrew"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 02: Script dependencies (dasel, jq - requires brew)
-  if run_module "02" "Script Dependencies" "module_02_script_dependencies"; then
+  # Script dependencies (dasel, jq - requires brew)
+  if run_module "script-dependencies" "Script Dependencies" "module_script_dependencies"; then
     ((successful_modules++))
   else
     ((failed_modules++))
@@ -246,64 +247,64 @@ main() {
   # Initialize TOML parser (after dasel is installed)
   init_toml_parser
 
-  # Module 04: Stow Dotfiles (requires git and stow)
-  if run_module "04" "Stow Dotfiles" "module_04_stow_dotfiles"; then
+  # Curl Tools (Claude CLI, fnm, pnpm)
+  if run_module "curl-tools" "Curl Tools" "module_curl_tools"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 05: Curl Tools (Claude CLI, fnm, pnpm)
-  if run_module "05" "Curl Tools" "module_05_curl_tools"; then
+  # Brew Packages (stow, neovim, tmux, etc.)
+  if run_module "brew-packages" "Brew Packages" "module_brew_packages"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 06: Brew Packages
-  if run_module "06" "Brew Packages" "module_06_brew_packages"; then
+  # Brew Casks (applications)
+  if run_module "brew-casks" "Brew Casks" "module_brew_casks"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 07: Brew Casks
-  if run_module "07" "Brew Casks" "module_07_brew_casks"; then
+  # Oh My Zsh (install framework before stowing config)
+  if run_module "oh-my-zsh" "Oh My Zsh" "module_oh_my_zsh"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 08: Git Configuration
-  if run_module "08" "Git Configuration" "module_08_git_config"; then
+  # Stow Dotfiles (requires git, stow, and OMZ installed)
+  if run_module "stow-dotfiles" "Stow Dotfiles" "module_stow_dotfiles"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 09: Directory Structure
-  if run_module "09" "Directory Structure" "module_09_directories"; then
+  # Git Configuration
+  if run_module "git-config" "Git Configuration" "module_git_config"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 10: Clone Repositories (requires jq)
-  if run_module "10" "Clone Repositories" "module_10_clone_repos"; then
+  # Directory Structure
+  if run_module "directories" "Directory Structure" "module_directories"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 11: Oh My Zsh
-  if run_module "11" "Oh My Zsh" "module_11_oh_my_zsh"; then
+  # Clone Repositories (requires jq)
+  if run_module "clone-repos" "Clone Repositories" "module_clone_repos"; then
     ((successful_modules++))
   else
     ((failed_modules++))
   fi
 
-  # Module 12: macOS Defaults
-  if run_module "12" "macOS Defaults" "module_12_macos_defaults"; then
+  # macOS Defaults
+  if run_module "macos-defaults" "macOS Defaults" "module_macos_defaults"; then
     ((successful_modules++))
   else
     ((failed_modules++))

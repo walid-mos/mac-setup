@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 10: Oh My Zsh
+# Oh My Zsh
 # =============================================================================
 # Install Oh My Zsh and custom plugins.
 # =============================================================================
 
-module_11_oh_my_zsh() {
-  log_section "Module 10: Installing Oh My Zsh"
+module_oh_my_zsh() {
+  log_section " Installing Oh My Zsh"
 
   # Check if Oh My Zsh is already installed
   if [[ -d "$OH_MY_ZSH_DIR" ]]; then
@@ -101,5 +101,5 @@ module_11_oh_my_zsh() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_11_oh_my_zsh
+  module_oh_my_zsh
 fi

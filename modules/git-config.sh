@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 07: Git Configuration
+# Git Configuration
 # =============================================================================
 # Configure Git user information and global settings.
 # =============================================================================
 
-module_08_git_config() {
-  log_section "Module 07: Configuring Git"
+module_git_config() {
+  log_section " Configuring Git"
 
   # Get git config from TOML
   local git_user_name
@@ -86,5 +86,5 @@ module_08_git_config() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_08_git_config
+  module_git_config
 fi

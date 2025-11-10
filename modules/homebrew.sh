@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 02: Homebrew
+# Homebrew
 # =============================================================================
 # Install Homebrew package manager.
 # =============================================================================
 
-module_01_homebrew() {
-  log_section "Module 02: Installing Homebrew"
+module_homebrew() {
+  log_section "Homebrew: Installing Homebrew"
 
   # Check if Homebrew is already installed
   if command_exists brew; then
@@ -76,5 +76,5 @@ module_01_homebrew() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_01_homebrew
+  module_homebrew
 fi

@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# Module 02: Script Dependencies
+# Script Dependencies: Script Dependencies
 # =============================================================================
 # Install tools required for the script itself to function properly.
 # Requires Homebrew (Module 01) to be installed first.
 # =============================================================================
 
-module_02_script_dependencies() {
-  log_section "Module 02: Installing Script Dependencies"
+module_script_dependencies() {
+  log_section "Script Dependencies: Installing Script Dependencies"
 
   # Verify Homebrew is installed
-  require_tool brew "Homebrew not found. Please run module 01 (Homebrew) first"
+  require_tool brew "Homebrew not found. Please run homebrew module first"
 
   # Required tools for script functionality
   local required_tools=(
@@ -56,5 +56,5 @@ module_02_script_dependencies() {
 
 # Run module if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  module_02_script_dependencies
+  module_script_dependencies
 fi
