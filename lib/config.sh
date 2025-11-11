@@ -105,6 +105,19 @@ SYSTEM_FAST_KEY_REPEAT="${SYSTEM_FAST_KEY_REPEAT:-true}"
 SYSTEM_SPACES_SPAN_DISPLAYS="${SYSTEM_SPACES_SPAN_DISPLAYS:-true}"
 
 # -----------------------------------------------------------------------------
+# Node.js Configuration
+# -----------------------------------------------------------------------------
+NODEJS_DEFAULT_VERSION="${NODEJS_DEFAULT_VERSION:-latest}"  # fnm install version
+
+# -----------------------------------------------------------------------------
+# Docker/Colima Configuration
+# -----------------------------------------------------------------------------
+COLIMA_CPU="${COLIMA_CPU:-4}"                 # Number of CPUs
+COLIMA_MEMORY="${COLIMA_MEMORY:-8}"           # Memory in GB
+COLIMA_DISK="${COLIMA_DISK:-60}"              # Disk size in GB
+COLIMA_ARCH="${COLIMA_ARCH:-aarch64}"         # Architecture (aarch64 for M1/M2)
+
+# -----------------------------------------------------------------------------
 # Timeouts (in seconds)
 # -----------------------------------------------------------------------------
 CURL_TIMEOUT="${CURL_TIMEOUT:-300}"
@@ -159,6 +172,8 @@ export APPLY_MACOS_DEFAULTS RESTART_SERVICES
 export DOCK_AUTOHIDE DOCK_SIZE DOCK_MRU_SPACES
 export FINDER_SHOW_HIDDEN FINDER_SHOW_EXTENSIONS FINDER_VIEW_STYLE FINDER_DISABLE_DS_STORE
 export SYSTEM_DISABLE_GATEKEEPER SYSTEM_FAST_KEY_REPEAT SYSTEM_SPACES_SPAN_DISPLAYS
+export NODEJS_DEFAULT_VERSION
+export COLIMA_CPU COLIMA_MEMORY COLIMA_DISK COLIMA_ARCH
 export CURL_TIMEOUT GIT_CLONE_TIMEOUT BREW_INSTALL_TIMEOUT
 export DRY_RUN SKIP_MODULES RUN_ONLY_MODULE
 export TOML_CONFIG

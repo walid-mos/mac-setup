@@ -73,6 +73,21 @@ dev = [
 # Programming languages and compilers
 languages = []
 
+# Deployment and infrastructure
+deployment = [
+  "railway"
+]
+
+# Backend services
+backend = [
+  "redis"
+]
+
+# File watching and development
+dev_tools = [
+  "watchman"
+]
+
 # Modern Rust CLI replacements (productivity boosters)
 rust_modern_tools = [
   "fd",        # Modern find replacement

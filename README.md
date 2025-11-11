@@ -38,11 +38,14 @@ vim mac-setup.toml
 ### 🛠️ Development Tools
 - **Neovim** - Hyperextensible Vim-based text editor
 - **Git** - Version control with custom configuration
-- **GitHub CLI** (`gh`) - GitHub command-line tool
-- **GitLab CLI** (`glab`) - GitLab command-line tool
+- **GitHub CLI** (`gh`) - GitHub command-line tool (requires manual `gh auth login`)
+- **GitLab CLI** (`glab`) - GitLab command-line tool (requires manual `glab auth login`)
 - **fzf** - Fuzzy finder for interactive selections
 - **ripgrep** - Ultra-fast grep alternative
-- **Docker** + **Colima** - Containerization platform
+- **Docker** + **Colima** - Containerization platform (auto-configured via automatisations)
+- **Railway CLI** - Deploy to Railway.app
+- **Redis** - In-memory data store
+- **Watchman** - File watching service
 
 ### 💻 Terminal & Shell
 - **Ghostty** - Native macOS terminal emulator
@@ -209,6 +212,15 @@ DEV_ROOT="$HOME/Development"
 # Cloning
 CLONE_PARALLEL_JOBS=5
 
+# Node.js Configuration
+NODEJS_DEFAULT_VERSION="latest"  # fnm install version
+
+# Docker/Colima Configuration
+COLIMA_CPU=4                # Number of CPUs
+COLIMA_MEMORY=8             # Memory in GB
+COLIMA_DISK=60              # Disk size in GB
+COLIMA_ARCH="aarch64"       # Architecture (aarch64 for M1/M2)
+
 # macOS Defaults
 APPLY_MACOS_DEFAULTS=true
 DOCK_AUTOHIDE=false
@@ -258,30 +270,82 @@ The `automatisations/` directory allows you to add **custom automation scripts**
 ### Features
 - **Automatic Discovery**: All `.sh` files are detected and executed
 - **Alphabetical Order**: Scripts run in alphabetical order
-- **TOML Configuration**: Enable/disable globally or per-script
+- **Opt-Out by Default**: Automatisations are **enabled by default**, set to `false` to disable
 - **Interactive Error Handling**: Prompts whether to continue if a script fails
 - **Full Module Support**: Access to all helper functions and logging
 
-### Quick Start
+### Built-in Automatisations
+
+#### 1. `setup-nodejs.sh` (Active by default)
+Configures Node.js environment via fnm:
+- Installs Node.js version specified in `NODEJS_DEFAULT_VERSION` (default: `"latest"`)
+- Sets as default version
+- Verifies pnpm installation
+
+**To disable:**
+```toml
+[automations]
+setup-nodejs = false
+```
+
+#### 2. `configure-docker.sh` (Active by default)
+Sets up Docker/Colima with optimal settings:
+- Configures CPU, memory, disk from `lib/config.sh`
+- Starts Colima if not running
+- Verifies Docker connectivity
+
+**Configuration in `lib/config.sh`:**
+```bash
+COLIMA_CPU=4          # Adjust based on your Mac
+COLIMA_MEMORY=8       # Memory in GB
+COLIMA_DISK=60        # Disk size in GB
+```
+
+**To disable:**
+```toml
+[automations]
+configure-docker = false
+```
+
+#### 3. `expand-macos-defaults.sh` (Active by default)
+Additional macOS system preferences:
+- **Trackpad**: Tap-to-click, three-finger drag
+- **Screenshots**: Custom location (`~/Pictures/Screenshots`), PNG format, no shadow
+- **Menu bar**: Battery percentage, date/time format
+- **Mission Control**: Disable auto-rearrange, faster animations
+- **Keyboard**: Disable press-and-hold (enable key repeat)
+- **Energy**: Custom sleep settings
+- **Security**: Disable Gatekeeper (allow apps from unidentified developers), disable quarantine warnings
+
+**⚠️ Security Note:**
+This automation disables Gatekeeper and quarantine warnings to facilitate development. To re-enable security:
+```bash
+sudo spctl --master-enable  # Re-enable Gatekeeper
+```
+
+**To disable:**
+```toml
+[automations]
+expand-macos-defaults = false
+```
+
+### Creating Custom Automatisations
 
 1. **Create a script** in `automatisations/`:
    ```bash
-   cp automatisations/example-automation.sh.template automatisations/my-task.sh
-   ```
-
-2. **Edit the script** following the template structure:
-   ```bash
-   automation_my_task() {
+   # File: automatisations/my-custom-task.sh
+   automation_my_custom_task() {
      log_info "Running my custom task..."
      # Your automation logic here
    }
    ```
 
-3. **Configure in TOML** (optional):
+2. **Script is active by default** - no TOML config needed!
+
+3. **To disable** (opt-out approach):
    ```toml
    [automations]
-   enabled = true
-   my-task = true  # Enable this specific automation
+   my-custom-task = false
    ```
 
 4. **Run setup**:
@@ -296,7 +360,13 @@ The `automatisations/` directory allows you to add **custom automation scripts**
 - Create additional symlinks for specific tools
 - Run cleanup tasks or optimizations
 
-For detailed documentation and examples, see `automatisations/README.md`.
+### Automation Logic (Important!)
+
+**Automatisations use an OPT-OUT approach:**
+- ✅ **By default**: All `.sh` files in `automatisations/` run automatically
+- ❌ **To disable**: Add `script-name = false` in `[automations]` section
+
+This is different from traditional opt-in systems where you must explicitly enable features.
 
 ## Project Structure
 
@@ -440,11 +510,16 @@ After successful installation:
 
 4. **Authenticate CLIs**:
    ```bash
-   gh auth login    # GitHub
-   glab auth login  # GitLab
+   gh auth login    # GitHub (required for repository cloning)
+   glab auth login  # GitLab (required for repository cloning)
    ```
 
-5. **Review Log File**:
+5. **VS Code Settings Sync** (if using VS Code):
+   - Open VS Code
+   - Sign in with GitHub account
+   - Extensions and settings will sync automatically
+
+6. **Review Log File**:
    ```bash
    cat ~/.mac-setup.log
    ```
