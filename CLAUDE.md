@@ -46,6 +46,195 @@ Summary report
 4. **Dry-run Support**: All operations respect `DRY_RUN` flag
 5. **Logging**: Color-coded console output + file logging (`~/.mac-setup.log`)
 
+## Bootstrap Installer
+
+### Overview
+
+`install.sh` is a bootstrap script designed for **quick installation on fresh macOS systems**. It provides a curl-friendly one-liner that downloads the repository and launches the setup process.
+
+**Primary use case**: Install on a brand new Mac without any prior setup.
+
+### Design Philosophy
+
+- **Zero external dependencies**: Uses ONLY tools present on macOS by default
+- **Security-first**: Function wrapping prevents partial execution if network fails
+- **User-friendly**: Interactive confirmation with clear summary
+- **Flexible**: Supports both attended and unattended modes
+
+### Tools Used (macOS Native Only)
+
+The bootstrap script uses **ONLY** tools present on fresh macOS:
+
+| Tool | Purpose | Always Available? |
+|------|---------|-------------------|
+| `bash` | Shell interpreter (3.2+) | ✅ Yes |
+| `curl` | Download script/repo | ✅ Yes |
+| `xcode-select` | Install/check Xcode CLT | ✅ Yes |
+| `git` | Clone repository | ⚠️ Auto-installed via xcode-select |
+| `tput` | Terminal colors | ✅ Yes |
+| `uname` | OS detection | ✅ Yes |
+| `command` | Check tool existence | ✅ Yes |
+| `read` | User input | ✅ Yes |
+| `sleep` | Wait during installation | ✅ Yes |
+
+**IMPORTANT**: On fresh macOS, `/usr/bin/git` is only a **stub** that triggers Xcode CLT installation dialog. The script automatically installs Xcode CLT (~700MB) if not present.
+
+**NEVER use**: `dasel`, `jq`, `brew`, `fzf`, or any tool installed by setup.sh
+
+### Execution Flow
+
+```
+install.sh
+  ↓
+1. Prerequisites Check
+   - Verify macOS (Darwin)
+   - Check bash version (≥3.2)
+   - Check curl available
+   - Check Xcode CLT installed
+     ↓ If NOT installed:
+     - Trigger xcode-select --install (~700MB download)
+     - Wait for installation to complete (max 10min timeout)
+     - Verify git is now available
+  ↓
+2. Show Summary
+   - Installation location
+   - What will be installed
+   - Warning about system modifications
+  ↓
+3. User Confirmation
+   - Interactive prompt (unless --yes)
+   - Default: NO (safe option)
+  ↓
+4. Clone Repository
+   - To ~/.stow_repository
+   - Or update if already exists
+  ↓
+5. Launch setup.sh
+   - Pass through all args (--dry-run, --verbose, etc.)
+   - Execute from cloned location
+  ↓
+6. Success Message
+   - Next steps
+   - Authentication reminders
+```
+
+### Usage
+
+**One-liner (recommended):**
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh)
+```
+
+**With options:**
+```bash
+# Unattended mode (skip confirmation)
+bash <(curl -fsSL https://raw.githubusercontent.com/.../install.sh) --yes
+
+# Dry-run (pass to setup.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/.../install.sh) --dry-run
+
+# Verbose output (pass to setup.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/.../install.sh) --verbose
+```
+
+**Two-step (more secure):**
+```bash
+# 1. Download and inspect
+curl -fsSL https://raw.githubusercontent.com/.../install.sh -o install.sh
+less install.sh
+
+# 2. Execute after review
+bash install.sh
+```
+
+### Security Features
+
+1. **Function Wrapping**:
+   - Entire script wrapped in `main()` function
+   - Executed on last line only
+   - Prevents partial execution if curl is interrupted mid-download
+   - Example: `rm -rf /$VAR` won't execute as `rm -rf /` if download cuts off
+
+2. **Curl Flags** (`-fsSL`):
+   - `-f`: Fail silently on HTTP errors (4xx, 5xx)
+   - `-s`: Silent mode (no progress bar)
+   - `-S`: Show errors even in silent mode
+   - `-L`: Follow redirects (GitHub raw URLs)
+
+3. **Safe Defaults**:
+   - Confirmation required by default (must explicitly opt-in)
+   - Validates prerequisites before any operations
+   - Clear error messages with actionable guidance
+
+4. **No Destructive Operations**:
+   - Only clones repo (or updates existing)
+   - Delegates all system modifications to setup.sh
+   - User sees setup.sh's own confirmation prompts
+
+### Argument Handling
+
+- `--help`, `-h`: Show usage and exit
+- `--yes`, `-y`, `--unattended`: Skip confirmation prompt
+- **All other args**: Passed directly to `setup.sh`
+  - `--dry-run` → `./setup.sh --dry-run`
+  - `--verbose` → `./setup.sh --verbose`
+  - `--module X` → `./setup.sh --module X`
+  - etc.
+
+### Error Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| Not macOS | Exit with error, show detected OS |
+| Bash < 3.2 | Exit with error, show current version |
+| curl missing | Exit with error (should never happen on macOS) |
+| Xcode CLT missing | Auto-install: trigger xcode-select --install, wait for completion |
+| Xcode CLT timeout | Exit after 10min, ask user to complete manually |
+| Git still missing after CLT | Exit with error (should never happen) |
+| Repo exists (not git) | Exit, ask user to remove/rename directory |
+| Repo exists (git) | Pull latest changes from origin/main |
+| Clone fails | Exit with potential causes (network, auth, URL) |
+| setup.sh missing | Exit, mention repo structure may have changed |
+| setup.sh fails | Exit with setup.sh's exit code |
+
+### Modifying the Bootstrap Script
+
+**When to modify:**
+- Changing repository URL or structure
+- Adding new prerequisite checks
+- Changing default installation directory
+- Adding new bootstrap-level options
+
+**When NOT to modify:**
+- Changing what gets installed → Edit `mac-setup.toml`
+- Changing installation behavior → Edit `lib/config.sh` or modules
+- Adding tools/dependencies → Those go in modules, not bootstrap
+
+**Testing changes:**
+```bash
+# Local testing (doesn't require GitHub)
+./install.sh --dry-run
+
+# Test with actual repo clone
+./install.sh --yes --dry-run
+
+# Full test on clean VM (recommended before releasing)
+# Create macOS VM, then run one-liner
+```
+
+**⚠️ CRITICAL**: Never use tools not present on fresh macOS in `install.sh`!
+
+### File Locations
+
+- Bootstrap script: `install.sh` (repository root)
+- Prerequisites check: `install.sh:61-146` (check_prerequisites with Xcode CLT auto-install)
+- Summary display: `install.sh:148-183` (show_summary function)
+- User confirmation: `install.sh:185-208` (confirm_installation function)
+- Repository cloning: `install.sh:210-244` (clone_repository function)
+- Setup execution: `install.sh:246-278` (run_setup function)
+- Usage text: `install.sh:293-330` (show_usage function)
+- Main logic: `install.sh:335-356` (main function)
+
 ## Module Dependencies
 
 Critical dependencies (order matters):

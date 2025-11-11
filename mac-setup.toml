@@ -136,7 +136,9 @@ dev = [
 ]
 
 # Creative tools
-creative = []
+creative = [
+    "affinity"
+]
 
 # Utilities
 utilities = [

@@ -2,6 +2,20 @@
 
 Automated macOS installation and configuration script using TOML configuration and GNU Stow for dotfiles management.
 
+---
+
+## 🚀 Quick Start
+
+**Get your Mac set up in one command:**
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh)
+```
+
+*Installs everything: Homebrew, dev tools, applications, dotfiles, and more. Safe to run on a fresh Mac.*
+
+---
+
 ## Features
 
 - **🔧 Automated Installation**: Complete Mac setup with a single command
@@ -13,19 +27,78 @@ Automated macOS installation and configuration script using TOML configuration a
 - **🔒 Idempotent**: Safe to run multiple times
 - **🧪 Dry Run Mode**: Preview changes without modifying system
 
-## Quick Start
+## Installation
+
+### ⚡ Quick Install (Recommended)
+
+Run this one-liner on a fresh Mac to get started immediately:
 
 ```bash
-# Clone this repository
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh)
+```
+
+This will:
+1. Verify prerequisites (git, bash)
+2. Clone the repository to `~/.stow_repository`
+3. Show a summary of what will be installed
+4. Ask for confirmation before proceeding
+5. Run the full setup automatically
+
+**Options:**
+```bash
+# Skip confirmation (unattended mode)
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh) --yes
+
+# Preview without making changes
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh) --dry-run
+
+# Verbose output
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh) --verbose
+```
+
+### 🔒 Secure Install (Inspect First)
+
+For maximum security, download and inspect the script before running:
+
+```bash
+# Download the installer
+curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh -o mac-setup-install.sh
+
+# Review the script (recommended)
+less mac-setup-install.sh
+
+# Run the installer
+bash mac-setup-install.sh
+```
+
+### 🛠️ Manual Install (Full Control)
+
+If you prefer to clone the repository yourself:
+
+```bash
+# Clone the repository
 git clone https://github.com/walid-mos/dotfiles.git ~/.stow_repository
 cd ~/.stow_repository/mac-setup
 
 # Edit configuration (optional)
 vim mac-setup.toml
 
-# Run installation
+# Run setup
 ./setup.sh
 ```
+
+### Prerequisites
+
+The installer requires:
+- **macOS** (tested on macOS Ventura and later)
+- **bash** 3.2+ (included with macOS)
+- **curl** (included with macOS)
+
+**Xcode Command Line Tools** (for git):
+- If not installed, the installer will **automatically install them** (~700MB download)
+- A system dialog will appear - click "Install" and accept the license
+- Installation takes 2-3 minutes on a fast connection
+- The script will wait for installation to complete before continuing
 
 ## What Gets Installed
 
