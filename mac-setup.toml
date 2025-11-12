@@ -133,7 +133,9 @@ media = [
 
 # Development tools
 dev = [
-  "visual-studio-code"
+  "visual-studio-code",
+  "mysql",
+  "postgresql@18"
 ]
 
 # Creative tools
@@ -189,6 +191,9 @@ enabled = true
 # backup-databases = true
 # sync-configs = false
 # install-fonts = true
+
+# React Native iOS environment setup
+setup-react-native-ios = true
 
 # -----------------------------------------------------------------------------
 # Additional Configuration
