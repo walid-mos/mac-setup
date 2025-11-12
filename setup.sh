@@ -168,11 +168,13 @@ should_run_module() {
   fi
 
   # Check if module is in skip list
-  for skip in "${SKIP_MODULES[@]}"; do
-    if [[ "$module_num" == "$skip" ]]; then
-      return 1
-    fi
-  done
+  if [[ ${#SKIP_MODULES[@]} -gt 0 ]]; then
+    for skip in "${SKIP_MODULES[@]}"; do
+      if [[ "$module_num" == "$skip" ]]; then
+        return 1
+      fi
+    done
+  fi
 
   return 0
 }
