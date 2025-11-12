@@ -11,7 +11,7 @@
 # -----------------------------------------------------------------------------
 # Dotfiles Repository
 # -----------------------------------------------------------------------------
-DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/walid-mos/dotfiles.git}"
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/walid-mos/mac-config.git}"
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.stow_repository}"
 DOTFILES_BRANCH="${DOTFILES_BRANCH:-v3}"
 

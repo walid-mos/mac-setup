@@ -4,7 +4,7 @@
 # Mac Setup Bootstrap Installer
 # =============================================================================
 # Downloads and executes the mac-setup repository
-# Repository: https://github.com/walid-mos/dotfiles
+# Repository: https://github.com/walid-mos/mac-setup
 #
 # IMPORTANT: This script uses ONLY macOS native tools:
 #   - bash, curl, git, uname, command, read, echo
@@ -17,10 +17,10 @@ set -eo pipefail
 # Configuration
 # -----------------------------------------------------------------------------
 
-REPO_URL="https://github.com/walid-mos/dotfiles.git"
+REPO_URL="https://github.com/walid-mos/mac-setup.git"
 DOTFILES_BRANCH="main"
 INSTALL_DIR="/tmp/mac-setup-$$"
-SETUP_SCRIPT="${INSTALL_DIR}/mac-setup/setup.sh"
+SETUP_SCRIPT="${INSTALL_DIR}/setup.sh"
 
 # Colors for output (using tput for maximum compatibility)
 if command -v tput &> /dev/null && [[ -t 1 ]]; then

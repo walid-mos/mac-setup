@@ -9,7 +9,7 @@ Automated macOS installation and configuration script using TOML configuration a
 **Get your Mac set up in one command:**
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/mac-setup/main/install.sh)
 ```
 
 *Installs everything: Homebrew, dev tools, applications, dotfiles, and more. Safe to run on a fresh Mac.*
@@ -34,7 +34,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-
 Run this one-liner on a fresh Mac to get started immediately:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/mac-setup/main/install.sh)
 ```
 
 This will:
@@ -48,13 +48,13 @@ This will:
 **Options:**
 ```bash
 # Skip confirmation (unattended mode)
-bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh) --yes
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/mac-setup/main/install.sh) --yes
 
 # Preview without making changes
-bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh) --dry-run
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/mac-setup/main/install.sh) --dry-run
 
 # Verbose output
-bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh) --verbose
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/mac-setup/main/install.sh) --verbose
 ```
 
 ### 🔒 Secure Install (Inspect First)
@@ -63,7 +63,7 @@ For maximum security, download and inspect the script before running:
 
 ```bash
 # Download the installer
-curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh -o mac-setup-install.sh
+curl -fsSL https://raw.githubusercontent.com/walid-mos/mac-setup/main/install.sh -o mac-setup-install.sh
 
 # Review the script (recommended)
 less mac-setup-install.sh
@@ -77,14 +77,14 @@ bash mac-setup-install.sh
 If you prefer to clone the repository yourself:
 
 ```bash
-# Clone the repository
-git clone https://github.com/walid-mos/dotfiles.git ~/.stow_repository
-cd ~/.stow_repository/mac-setup
+# Clone the setup repository
+git clone https://github.com/walid-mos/mac-setup.git ~/mac-setup
+cd ~/mac-setup
 
 # Edit configuration (optional)
 vim mac-setup.toml
 
-# Run setup
+# Run setup (will clone dotfiles to ~/.stow_repository automatically)
 ./setup.sh
 ```
 
@@ -272,7 +272,7 @@ Defines **HOW** to install:
 
 ```bash
 # Dotfiles
-DOTFILES_REPO="https://github.com/walid-mos/dotfiles.git"
+DOTFILES_REPO="https://github.com/walid-mos/mac-config.git"
 DOTFILES_DIR="$HOME/.stow_repository"
 
 # Stow behavior

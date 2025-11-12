@@ -129,7 +129,7 @@ install.sh
 
 **One-liner (recommended):**
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-setup/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/mac-setup/main/install.sh)
 ```
 
 **With options:**
@@ -236,10 +236,10 @@ bash install.sh
 The bootstrap script uses these configuration variables (lines 20-23):
 
 ```bash
-REPO_URL="https://github.com/walid-mos/dotfiles.git"
+REPO_URL="https://github.com/walid-mos/mac-setup.git"
 DOTFILES_BRANCH="main"                    # Branch to clone
 INSTALL_DIR="/tmp/mac-setup-$$"           # Temporary directory (PID-based unique name)
-SETUP_SCRIPT="${INSTALL_DIR}/mac-setup/setup.sh"
+SETUP_SCRIPT="${INSTALL_DIR}/setup.sh"
 ```
 
 **Override via environment variables:**
@@ -248,7 +248,7 @@ SETUP_SCRIPT="${INSTALL_DIR}/mac-setup/setup.sh"
 DOTFILES_BRANCH="develop" bash <(curl -fsSL .../install.sh)
 
 # Use different repo (for testing forks)
-REPO_URL="https://github.com/myuser/dotfiles.git" bash <(curl -fsSL .../install.sh)
+REPO_URL="https://github.com/myuser/mac-setup.git" bash <(curl -fsSL .../install.sh)
 ```
 
 **Important**: `INSTALL_DIR` is temporary - scripts are auto-cleaned by OS. Only dotfiles in `~/.stow_repository` persist.
