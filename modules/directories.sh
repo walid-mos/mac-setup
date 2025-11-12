@@ -28,13 +28,16 @@ module_directories() {
   dest_values=$(parse_toml_array "$TOML_CONFIG" "repositories.destinations" 2>/dev/null || true)
 
   if [[ -z "$dest_values" ]]; then
-    # Fallback: parse manually with awk
+    # Fallback: parse manually with awk (BSD awk compatible)
     dest_values=$(awk '
       /^\[repositories\.destinations\]/ { in_section=1; next }
       in_section && /^\[/ { exit }
-      in_section && /=/ {
-        match($0, /"([^"]+)"/, arr)
-        if (arr[1]) print arr[1]
+      in_section && /=/ && /"/ {
+        # Extract value between quotes
+        line = $0
+        sub(/^[^"]*"/, "", line)
+        sub(/".*$/, "", line)
+        if (line) print line
       }
     ' "$TOML_CONFIG")
   fi
@@ -51,13 +54,16 @@ module_directories() {
   override_values=$(parse_toml_array "$TOML_CONFIG" "repositories.repo_overrides" 2>/dev/null || true)
 
   if [[ -z "$override_values" ]]; then
-    # Fallback: parse manually with awk
+    # Fallback: parse manually with awk (BSD awk compatible)
     override_values=$(awk '
       /^\[repositories\.repo_overrides\]/ { in_section=1; next }
       in_section && /^\[/ { exit }
-      in_section && /=/ {
-        match($0, /"([^"]+)"/, arr)
-        if (arr[1]) print arr[1]
+      in_section && /=/ && /"/ {
+        # Extract value between quotes
+        line = $0
+        sub(/^[^"]*"/, "", line)
+        sub(/".*$/, "", line)
+        if (line) print line
       }
     ' "$TOML_CONFIG")
   fi

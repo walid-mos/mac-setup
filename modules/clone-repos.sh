@@ -20,8 +20,10 @@ get_repo_destination() {
     /^\[repositories\.repo_overrides\]/ { in_section=1; next }
     in_section && /^\[/ { exit }
     in_section && $0 ~ "^"repo" *= *" {
-      match($0, /"([^"]+)"/, arr)
-      print arr[1]
+      # Extract value between quotes (BSD awk compatible)
+      sub(/^[^"]*"/, "")
+      sub(/".*$/, "")
+      print
       exit
     }
   ' "$TOML_CONFIG")
@@ -37,8 +39,10 @@ get_repo_destination() {
     /^\[repositories\.destinations\]/ { in_section=1; next }
     in_section && /^\[/ { exit }
     in_section && $0 ~ "^"org" *= *" {
-      match($0, /"([^"]+)"/, arr)
-      print arr[1]
+      # Extract value between quotes (BSD awk compatible)
+      sub(/^[^"]*"/, "")
+      sub(/".*$/, "")
+      print
       exit
     }
   ' "$TOML_CONFIG")
@@ -68,9 +72,12 @@ select_destination_interactive() {
     /^\[repositories\.destinations\]/ { in_section=1; next }
     /^\[repositories\.repo_overrides\]/ { in_section=1; next }
     in_section && /^\[/ { exit }
-    in_section && /=/ {
-      match($0, /"([^"]+)"/, arr)
-      if (arr[1]) print arr[1]
+    in_section && /=/ && /"/ {
+      # Extract value between quotes (BSD awk compatible)
+      line = $0
+      sub(/^[^"]*"/, "", line)
+      sub(/".*$/, "", line)
+      if (line) print line
     }
   ' "$TOML_CONFIG" | sort -u)
 
