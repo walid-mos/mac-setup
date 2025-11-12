@@ -218,6 +218,80 @@ log_command() {
 }
 
 # -----------------------------------------------------------------------------
+# Git Error Logging with Pattern Detection and Suggestions
+# -----------------------------------------------------------------------------
+log_git_error() {
+  local repo_url="$1"
+  local exit_code="$2"
+  local stderr_content="$3"
+
+  # Log basic error info
+  log_error "Failed to clone repository: $repo_url"
+
+  # Decode exit code
+  local exit_description
+  case "$exit_code" in
+    0)   exit_description="Success" ;;
+    1)   exit_description="Generic error" ;;
+    124) exit_description="Timeout" ;;
+    128) exit_description="Fatal error" ;;
+    255) exit_description="SSH connection failure" ;;
+    *)   exit_description="Unknown error" ;;
+  esac
+
+  log_error "Git exit code: $exit_code ($exit_description)"
+
+  # Log stderr if available
+  if [[ -n "$stderr_content" ]]; then
+    log_error "Git stderr:"
+    while IFS= read -r line; do
+      log_error "  $line"
+    done <<< "$stderr_content"
+  fi
+
+  # Pattern detection and suggestions
+  local detected_issue=""
+  local suggestion=""
+
+  # Timeout detection
+  if [[ "$exit_code" == "124" ]]; then
+    detected_issue="Git clone timeout"
+    suggestion="Check network connection or increase GIT_CLONE_TIMEOUT in lib/config.sh (current: ${GIT_CLONE_TIMEOUT}s)"
+
+  # Auth failures
+  elif [[ "$stderr_content" =~ "Permission denied"|"Could not read from remote"|"publickey" ]]; then
+    detected_issue="SSH authentication failure"
+    if [[ "$repo_url" =~ ^git@ ]]; then
+      suggestion="Run 'ssh-add -l' to check SSH keys, or 'gh auth login' for GitHub CLI auth"
+    else
+      suggestion="Run 'gh auth login' (GitHub) or 'glab auth login' (GitLab) for authentication"
+    fi
+
+  # Repository not found
+  elif [[ "$stderr_content" =~ "not found"|"Repository not found" ]]; then
+    detected_issue="Repository not found"
+    suggestion="Verify repository URL in mac-setup.toml and ensure repository exists and is accessible"
+
+  # Branch not found
+  elif [[ "$stderr_content" =~ "branch".*"not found"|"Remote branch".*"not found" ]]; then
+    detected_issue="Branch not found"
+    suggestion="Check branch name in mac-setup.toml or DOTFILES_BRANCH variable"
+
+  # Network issues
+  elif [[ "$stderr_content" =~ "Failed to connect"|"Connection timed out"|"Could not resolve hostname" ]]; then
+    detected_issue="Network connectivity issue"
+    suggestion="Check internet connection and DNS resolution"
+  fi
+
+  # Log detected issue and suggestion
+  if [[ -n "$detected_issue" ]]; then
+    log_error ""
+    log_error "Detected issue: $detected_issue"
+    log_error "Suggestion: $suggestion"
+  fi
+}
+
+# -----------------------------------------------------------------------------
 # Error handling
 # -----------------------------------------------------------------------------
 log_error_exit() {

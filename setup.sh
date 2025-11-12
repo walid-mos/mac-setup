@@ -37,8 +37,6 @@ source "$SCRIPT_DIR/modules/brew-packages.sh"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/brew-casks.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/oh-my-zsh.sh"
-# shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/stow-dotfiles.sh"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/git-config.sh"
@@ -86,7 +84,6 @@ MODULES (in execution order):
   curl-tools          - Curl-based tools (Claude CLI, fnm, pnpm)
   brew-packages       - Homebrew packages (stow, neovim, etc.)
   brew-casks          - Homebrew applications
-  oh-my-zsh           - Oh My Zsh framework and plugins
   stow-dotfiles       - Stow dotfiles (dynamic package detection)
   git-config          - Git configuration
   directories         - Directory structure
@@ -217,7 +214,7 @@ main() {
   display_validation_summary
 
   # Track module execution
-  local total_modules=12
+  local total_modules=11
   local successful_modules=0
   local failed_modules=0
 
@@ -272,14 +269,7 @@ main() {
     ((failed_modules++))
   fi
 
-  # Oh My Zsh (install framework before stowing config)
-  if run_module "oh-my-zsh" "Oh My Zsh" "module_oh_my_zsh"; then
-    ((successful_modules++))
-  else
-    ((failed_modules++))
-  fi
-
-  # Stow Dotfiles (requires git, stow, and OMZ installed)
+  # Stow Dotfiles (requires git and stow)
   if run_module "stow-dotfiles" "Stow Dotfiles" "module_stow_dotfiles"; then
     ((successful_modules++))
   else

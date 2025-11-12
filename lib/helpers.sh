@@ -59,6 +59,49 @@ check_internet() {
 }
 
 # -----------------------------------------------------------------------------
+# Run command with timeout (macOS compatible)
+# -----------------------------------------------------------------------------
+# Runs a command with a timeout, without requiring GNU timeout command.
+# Returns 124 on timeout (matching GNU timeout behavior), or command exit code.
+#
+# Usage: run_with_timeout SECONDS command [args...]
+# Example: run_with_timeout 300 git clone https://github.com/user/repo.git
+# -----------------------------------------------------------------------------
+run_with_timeout() {
+  local timeout_duration=$1
+  shift
+  local command=("$@")
+
+  # Run command in background
+  "${command[@]}" &
+  local pid=$!
+
+  # Wait for timeout or completion
+  local elapsed=0
+  local check_interval=1
+
+  while kill -0 "$pid" 2>/dev/null; do
+    if [[ $elapsed -ge $timeout_duration ]]; then
+      # Timeout reached - kill the process
+      kill -TERM "$pid" 2>/dev/null
+      sleep 1
+      # Force kill if still running
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -KILL "$pid" 2>/dev/null
+      fi
+      wait "$pid" 2>/dev/null
+      return 124  # GNU timeout's exit code
+    fi
+    sleep $check_interval
+    ((elapsed += check_interval))
+  done
+
+  # Get command exit code
+  wait "$pid"
+  return $?
+}
+
+# -----------------------------------------------------------------------------
 # Get available disk space in GB
 # -----------------------------------------------------------------------------
 get_available_space() {
@@ -215,10 +258,16 @@ clone_repo() {
     return 0
   fi
 
-  timeout "$GIT_CLONE_TIMEOUT" git clone --branch "$branch" "$repo_url" "$destination" || {
-    log_error "Failed to clone repository: $repo_url"
+  # Capture stderr for error logging
+  local stderr_output
+  stderr_output=$(run_with_timeout "$GIT_CLONE_TIMEOUT" git clone --branch "$branch" "$repo_url" "$destination" 2>&1)
+  local exit_code=$?
+
+  if [[ $exit_code -ne 0 ]]; then
+    # Use enhanced git error logging
+    log_git_error "$repo_url" "$exit_code" "$stderr_output"
     return 1
-  }
+  fi
 
   log_success "Cloned: $repo_url"
   return 0
@@ -258,7 +307,7 @@ install_brew_package() {
     return 0
   fi
 
-  timeout "$BREW_INSTALL_TIMEOUT" brew install "$package" || {
+  run_with_timeout "$BREW_INSTALL_TIMEOUT" brew install "$package" || {
     log_error "Failed to install: $package"
     return 1
   }
@@ -285,7 +334,7 @@ install_brew_cask() {
     return 0
   fi
 
-  timeout "$BREW_INSTALL_TIMEOUT" brew install --cask "$cask" || {
+  run_with_timeout "$BREW_INSTALL_TIMEOUT" brew install --cask "$cask" || {
     log_error "Failed to install cask: $cask"
     return 1
   }

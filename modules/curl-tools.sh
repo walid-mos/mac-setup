@@ -33,6 +33,10 @@ module_curl_tools() {
     local install_command
     install_command=$(dasel -f "$TOML_CONFIG" -r toml "curl_tools.$tool_name" 2>/dev/null)
 
+    # Strip surrounding single quotes from TOML string value
+    install_command="${install_command#\'}"
+    install_command="${install_command%\'}"
+
     if [[ -z "$install_command" ]]; then
       log_error "No installation command found for: $tool_name"
       continue

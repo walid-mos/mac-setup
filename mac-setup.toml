@@ -67,7 +67,9 @@ dev = [
   "git-delta",
   "yamllint",
   "node",
-  "python@3.11"
+  "python@3.11",
+  "mysql",
+  "postgresql@18"
 ]
 
 # Programming languages and compilers
@@ -134,8 +136,6 @@ media = [
 # Development tools
 dev = [
   "visual-studio-code",
-  "mysql",
-  "postgresql@18"
 ]
 
 # Creative tools

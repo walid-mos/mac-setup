@@ -17,7 +17,7 @@ Automated macOS setup system using TOML configuration and modular bash architect
 
 - **`setup.sh`**: Main orchestrator that sources libraries, modules, and executes them sequentially
 - **`lib/`**: Shared utilities (logging, TOML parsing, helpers, validators)
-- **`modules/`**: 13 independent installation modules (can run standalone or selectively)
+- **`modules/`**: 12 independent installation modules (can run standalone or selectively)
 - **`automatisations/`**: User-defined custom scripts (auto-discovered, run last)
 
 ### Execution Flow
@@ -29,7 +29,7 @@ Validation (validators.sh) → User confirmation
   ↓
 Module execution (sequential, order matters):
   prerequisites → homebrew → script-dependencies → [TOML parser init]
-  → curl-tools → brew-packages → brew-casks → oh-my-zsh
+  → curl-tools → brew-packages → brew-casks
   → stow-dotfiles → git-config → directories → clone-repos
   → macos-defaults → automatisations
   ↓
@@ -271,7 +271,6 @@ Critical dependencies (order matters):
 - **Module 2** (homebrew) → provides `brew`
 - **Module 3** (script-dependencies) → provides `dasel` + `jq` (REQUIRED for TOML parsing)
 - **Module 5** (brew-packages) → provides `stow`, `fzf`
-- **Module 7** (oh-my-zsh) → must run BEFORE stow-dotfiles
 
 ## TOML Configuration Structure
 
@@ -378,6 +377,7 @@ my-task = true
   - Default (`BACKUP_EXISTING_CONFIGS=true`): Backup conflicting files
   - `--no-backup`: Fail on conflicts
 - **Process**: Clone repo → detect packages → stow each individually
+- **Zsh plugin management**: Handled by Zinit in dotfiles (no OMZ dependency)
 
 ### Clone Repos Module Details
 - **Intelligent destination mapping**:

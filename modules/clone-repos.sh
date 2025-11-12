@@ -120,12 +120,25 @@ clone_single_repo() {
   # Ensure destination directory exists
   mkdir -p "$DEV_ROOT/$dest" 2>/dev/null
 
-  # Clone repository
-  if timeout "$GIT_CLONE_TIMEOUT" git clone "$ssh_url" "$repo_path" &>/dev/null; then
+  # Capture stderr for error logging
+  local stderr_output
+  stderr_output=$(run_with_timeout "$GIT_CLONE_TIMEOUT" git clone "$ssh_url" "$repo_path" 2>&1)
+  local exit_code=$?
+
+  if [[ $exit_code -eq 0 ]]; then
     echo "✓ $repo_name"
+    if [[ "$VERBOSE_MODE" == "true" ]]; then
+      log_verbose "Cloned: $repo_name"
+    fi
     return 0
   else
     echo "✗ $repo_name" >&2
+    # Log detailed error to log file (always logged, regardless of verbose mode)
+    log_git_error "$ssh_url" "$exit_code" "$stderr_output"
+    if [[ "$VERBOSE_MODE" == "true" ]]; then
+      # In verbose mode, also show error summary on console
+      echo "  → Error: Exit code $exit_code" >&2
+    fi
     return 1
   fi
 }
@@ -138,6 +151,7 @@ clone_single_gitlab_repo() {
   local group="$2"
   local dest="$3"
   local repo_path="$DEV_ROOT/$dest/$repo_name"
+  local full_path="$group/$repo_name"
 
   # Check if already exists
   if [[ -d "$repo_path/.git" ]]; then
@@ -147,12 +161,25 @@ clone_single_gitlab_repo() {
   # Ensure destination directory exists
   mkdir -p "$DEV_ROOT/$dest" 2>/dev/null
 
-  # Clone using glab
-  if glab repo clone "$group/$repo_name" "$repo_path" &>/dev/null; then
+  # Capture stderr for error logging
+  local stderr_output
+  stderr_output=$(run_with_timeout "$GIT_CLONE_TIMEOUT" glab repo clone "$full_path" "$repo_path" 2>&1)
+  local exit_code=$?
+
+  if [[ $exit_code -eq 0 ]]; then
     echo "✓ $repo_name"
+    if [[ "$VERBOSE_MODE" == "true" ]]; then
+      log_verbose "Cloned: $repo_name (GitLab)"
+    fi
     return 0
   else
     echo "✗ $repo_name" >&2
+    # Log detailed error to log file (always logged, regardless of verbose mode)
+    log_git_error "$full_path" "$exit_code" "$stderr_output"
+    if [[ "$VERBOSE_MODE" == "true" ]]; then
+      # In verbose mode, also show error summary on console
+      echo "  → Error: Exit code $exit_code" >&2
+    fi
     return 1
   fi
 }
