@@ -13,36 +13,36 @@
 
 # Color codes
 if [[ "$ENABLE_COLORS" == "true" ]]; then
-  readonly COLOR_RESET='\033[0m'
-  readonly COLOR_RED='\033[0;31m'
-  readonly COLOR_GREEN='\033[0;32m'
-  readonly COLOR_YELLOW='\033[0;33m'
-  readonly COLOR_BLUE='\033[0;34m'
-  readonly COLOR_MAGENTA='\033[0;35m'
-  readonly COLOR_CYAN='\033[0;36m'
-  readonly COLOR_WHITE='\033[0;37m'
-  readonly COLOR_BOLD='\033[1m'
-  readonly COLOR_DIM='\033[2m'
+  COLOR_RESET='\033[0m'
+  COLOR_RED='\033[0;31m'
+  COLOR_GREEN='\033[0;32m'
+  COLOR_YELLOW='\033[0;33m'
+  COLOR_BLUE='\033[0;34m'
+  COLOR_MAGENTA='\033[0;35m'
+  COLOR_CYAN='\033[0;36m'
+  COLOR_WHITE='\033[0;37m'
+  COLOR_BOLD='\033[1m'
+  COLOR_DIM='\033[2m'
 else
-  readonly COLOR_RESET=''
-  readonly COLOR_RED=''
-  readonly COLOR_GREEN=''
-  readonly COLOR_YELLOW=''
-  readonly COLOR_BLUE=''
-  readonly COLOR_MAGENTA=''
-  readonly COLOR_CYAN=''
-  readonly COLOR_WHITE=''
-  readonly COLOR_BOLD=''
-  readonly COLOR_DIM=''
+  COLOR_RESET=''
+  COLOR_RED=''
+  COLOR_GREEN=''
+  COLOR_YELLOW=''
+  COLOR_BLUE=''
+  COLOR_MAGENTA=''
+  COLOR_CYAN=''
+  COLOR_WHITE=''
+  COLOR_BOLD=''
+  COLOR_DIM=''
 fi
 
 # Symbols
-readonly SYMBOL_INFO="ℹ"
-readonly SYMBOL_SUCCESS="✓"
-readonly SYMBOL_ERROR="✗"
-readonly SYMBOL_WARNING="⚠"
-readonly SYMBOL_PROGRESS="→"
-readonly SYMBOL_QUESTION="?"
+SYMBOL_INFO="ℹ"
+SYMBOL_SUCCESS="✓"
+SYMBOL_ERROR="✗"
+SYMBOL_WARNING="⚠"
+SYMBOL_PROGRESS="→"
+SYMBOL_QUESTION="?"
 
 # -----------------------------------------------------------------------------
 # Get timestamp for log entries
