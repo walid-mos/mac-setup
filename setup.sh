@@ -55,6 +55,9 @@ source "$SCRIPT_DIR/modules/automatisations.sh"
 # Parse Command Line Arguments
 # =============================================================================
 
+# Initialize arrays for argument parsing
+SKIP_MODULES=()
+
 show_usage() {
   cat << EOF
 Usage: $0 [OPTIONS]
