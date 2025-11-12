@@ -18,7 +18,6 @@ DOTFILES_BRANCH="${DOTFILES_BRANCH:-v3}"
 # -----------------------------------------------------------------------------
 # Stow Configuration
 # -----------------------------------------------------------------------------
-STOW_AUTO_DETECT="${STOW_AUTO_DETECT:-true}"        # Auto-detect all packages
 STOW_ADOPT="${STOW_ADOPT:-false}"                   # Adopt existing configs or backup?
 STOW_VERBOSE="${STOW_VERBOSE:-false}"               # Detailed stow logs
 STOW_EXCLUDE_DIRS=("mac-setup" ".git" ".github" "README.md" "CLAUDE.md" ".DS_Store")
@@ -40,7 +39,6 @@ VERBOSE_MODE="${VERBOSE_MODE:-false}"
 # Homebrew Configuration
 # -----------------------------------------------------------------------------
 HOMEBREW_INSTALL_URL="${HOMEBREW_INSTALL_URL:-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh}"
-HOMEBREW_PATH="${HOMEBREW_PATH:-/opt/homebrew/bin/brew}"
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
 
 # -----------------------------------------------------------------------------
@@ -63,7 +61,6 @@ fi
 # Directory Structure
 # -----------------------------------------------------------------------------
 DEV_ROOT="${DEV_ROOT:-$HOME/Development}"
-DEV_PROJECTS="${DEV_PROJECTS:-$DEV_ROOT}"
 
 # Subdirectories are created dynamically from TOML [repositories.destinations]
 # No hardcoded paths - fully scalable
@@ -71,9 +68,7 @@ DEV_PROJECTS="${DEV_PROJECTS:-$DEV_ROOT}"
 # -----------------------------------------------------------------------------
 # Git Repository Cloning
 # -----------------------------------------------------------------------------
-CLONE_PARALLEL_JOBS="${CLONE_PARALLEL_JOBS:-5}"
-DEFAULT_CLONE_PATH="${DEFAULT_CLONE_PATH:-$DEV_PROJECTS}"
-CLONE_METHOD="${CLONE_METHOD:-ssh}"  # ssh or https
+CLONE_PARALLEL_JOBS="${CLONE_PARALLEL_JOBS:-5}"  # Number of parallel git clone jobs
 
 # -----------------------------------------------------------------------------
 # macOS Defaults
@@ -153,14 +148,13 @@ fi
 
 # Export all variables for use in subshells
 export DOTFILES_REPO DOTFILES_DIR DOTFILES_BRANCH
-export STOW_AUTO_DETECT STOW_ADOPT STOW_VERBOSE
+export STOW_ADOPT STOW_VERBOSE
 export BACKUP_DIR BACKUP_EXISTING_CONFIGS
 export LOG_FILE ENABLE_COLORS VERBOSE_MODE
-export HOMEBREW_INSTALL_URL HOMEBREW_PATH HOMEBREW_PREFIX
-export CLAUDE_CLI_INSTALL_URL FNM_INSTALL_URL PNPM_INSTALL_URL
+export HOMEBREW_INSTALL_URL HOMEBREW_PREFIX
 export OH_MY_ZSH_INSTALL_URL OH_MY_ZSH_DIR OH_MY_ZSH_CUSTOM
-export DEV_ROOT DEV_PROJECTS DEV_PACKAGES
-export CLONE_PARALLEL_JOBS DEFAULT_CLONE_PATH CLONE_METHOD
+export DEV_ROOT
+export CLONE_PARALLEL_JOBS
 export APPLY_MACOS_DEFAULTS RESTART_SERVICES
 export DOCK_AUTOHIDE DOCK_SIZE DOCK_MRU_SPACES
 export FINDER_SHOW_HIDDEN FINDER_SHOW_EXTENSIONS FINDER_VIEW_STYLE FINDER_DISABLE_DS_STORE

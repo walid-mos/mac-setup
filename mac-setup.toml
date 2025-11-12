@@ -121,7 +121,8 @@ browsers = [
 # Productivity apps
 productivity = [
   "raycast",
-  "linear-linear"
+  "linear-linear",
+  "claude"
 ]
 
 # Media and communication
@@ -136,9 +137,7 @@ dev = [
 ]
 
 # Creative tools
-creative = [
-    "affinity"
-]
+creative = []
 
 # Utilities
 utilities = [

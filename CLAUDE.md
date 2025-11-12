@@ -387,6 +387,13 @@ my-task = true
 - **Authentication**: Prompts for `gh auth login` / `glab auth login` if needed
 - **Interactive selection**: Uses fzf multi-select with destination preview
 - **Format**: `repo-name [destination/] description`
+- **Parallel cloning** (New!):
+  - Two-phase process: resolve destinations (sequential) → clone (parallel)
+  - Clones up to `CLONE_PARALLEL_JOBS` repositories simultaneously (default: 5)
+  - Uses bash native job control (`wait -n` for pool management)
+  - Separate functions: `clone_single_repo()` (GitHub) and `clone_single_gitlab_repo()` (GitLab)
+  - Background jobs with PID tracking for proper error handling
+  - Dramatically faster for multiple repositories
 
 ### Automatisations System
 - **Auto-discovery**: All `*.sh` files in `automatisations/`
@@ -413,7 +420,7 @@ my-task = true
 - `STOW_ADOPT`: Merge vs backup on conflicts
 - `BACKUP_EXISTING_CONFIGS`: Auto-backup conflicts
 - `APPLY_MACOS_DEFAULTS`: Run macOS system preferences
-- `STOW_AUTO_DETECT`: Auto-detect all stow packages (default: true)
+- `CLONE_PARALLEL_JOBS`: Number of parallel git clone jobs (default: 5)
 
 ### Timeouts (seconds)
 - `CURL_TIMEOUT`: 300

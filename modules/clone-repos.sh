@@ -104,6 +104,60 @@ select_destination_interactive() {
 }
 
 # -----------------------------------------------------------------------------
+# Clone a single repository (helper for parallel execution)
+# -----------------------------------------------------------------------------
+clone_single_repo() {
+  local repo_name="$1"
+  local ssh_url="$2"
+  local dest="$3"
+  local repo_path="$DEV_ROOT/$dest/$repo_name"
+
+  # Check if already exists
+  if [[ -d "$repo_path/.git" ]]; then
+    return 0
+  fi
+
+  # Ensure destination directory exists
+  mkdir -p "$DEV_ROOT/$dest" 2>/dev/null
+
+  # Clone repository
+  if timeout "$GIT_CLONE_TIMEOUT" git clone "$ssh_url" "$repo_path" &>/dev/null; then
+    echo "✓ $repo_name"
+    return 0
+  else
+    echo "✗ $repo_name" >&2
+    return 1
+  fi
+}
+
+# -----------------------------------------------------------------------------
+# Clone a single GitLab repository (helper for parallel execution)
+# -----------------------------------------------------------------------------
+clone_single_gitlab_repo() {
+  local repo_name="$1"
+  local group="$2"
+  local dest="$3"
+  local repo_path="$DEV_ROOT/$dest/$repo_name"
+
+  # Check if already exists
+  if [[ -d "$repo_path/.git" ]]; then
+    return 0
+  fi
+
+  # Ensure destination directory exists
+  mkdir -p "$DEV_ROOT/$dest" 2>/dev/null
+
+  # Clone using glab
+  if glab repo clone "$group/$repo_name" "$repo_path" &>/dev/null; then
+    echo "✓ $repo_name"
+    return 0
+  else
+    echo "✗ $repo_name" >&2
+    return 1
+  fi
+}
+
+# -----------------------------------------------------------------------------
 # Main module function
 # -----------------------------------------------------------------------------
 module_clone_repos() {
@@ -224,7 +278,9 @@ module_clone_repos() {
         continue
       fi
 
-      # Clone selected repositories
+      # Phase 1: Resolve destinations and prepare clone list
+      local -a repos_to_clone=()
+
       while IFS= read -r selected_line; do
         local repo_name
         repo_name=$(echo "$selected_line" | awk '{print $1}')
@@ -258,25 +314,58 @@ module_clone_repos() {
           continue
         fi
 
-        log_info "Cloning: $repo_name → $dest/"
+        # Add to clone list
+        repos_to_clone+=("$repo_name|$ssh_url|$dest")
+      done <<< "$selected_repos"
+
+      # Phase 2: Clone repositories in parallel
+      if [[ ${#repos_to_clone[@]} -gt 0 ]]; then
+        log_info "Cloning ${#repos_to_clone[@]} repositories (max ${CLONE_PARALLEL_JOBS} parallel jobs)..."
+        echo ""
 
         if [[ "$DRY_RUN" == "true" ]]; then
-          log_dry_run "Would clone: $org/$repo_name -> $repo_path"
-          ((total_cloned++))
+          for repo_info in "${repos_to_clone[@]}"; do
+            local repo_name dest
+            repo_name=$(echo "$repo_info" | cut -d'|' -f1)
+            dest=$(echo "$repo_info" | cut -d'|' -f3)
+            log_dry_run "Would clone: $org/$repo_name -> $DEV_ROOT/$dest/$repo_name"
+            ((total_cloned++))
+          done
         else
-          # Ensure destination directory exists
-          ensure_directory "$DEV_ROOT/$dest"
+          local running_jobs=0
+          local -a clone_pids=()
 
-          # Clone repository
-          timeout "$GIT_CLONE_TIMEOUT" git clone "$ssh_url" "$repo_path" || {
-            log_error "Failed to clone: $repo_name"
-            continue
-          }
+          for repo_info in "${repos_to_clone[@]}"; do
+            local repo_name ssh_url dest
+            repo_name=$(echo "$repo_info" | cut -d'|' -f1)
+            ssh_url=$(echo "$repo_info" | cut -d'|' -f2)
+            dest=$(echo "$repo_info" | cut -d'|' -f3)
 
-          log_success "Cloned: $repo_name"
-          ((total_cloned++))
+            # Wait if we've reached max parallel jobs
+            while [[ $running_jobs -ge $CLONE_PARALLEL_JOBS ]]; do
+              wait -n  # Wait for any job to finish
+              ((running_jobs--))
+            done
+
+            # Launch clone in background
+            (
+              clone_single_repo "$repo_name" "$ssh_url" "$dest"
+            ) &
+            clone_pids+=($!)
+            ((running_jobs++))
+          done
+
+          # Wait for all remaining jobs
+          for pid in "${clone_pids[@]}"; do
+            if wait "$pid"; then
+              ((total_cloned++))
+            fi
+          done
+
+          echo ""
+          log_success "Cloned $total_cloned repositories from $org"
         fi
-      done <<< "$selected_repos"
+      fi
 
     done <<< "$github_orgs"
   fi
@@ -367,7 +456,9 @@ module_clone_repos() {
         continue
       fi
 
-      # Clone selected repositories
+      # Phase 1: Resolve destinations and prepare clone list
+      local -a repos_to_clone=()
+
       while IFS= read -r selected_line; do
         local repo_name
         repo_name=$(echo "$selected_line" | awk '{print $1}')
@@ -393,25 +484,57 @@ module_clone_repos() {
           continue
         fi
 
-        log_info "Cloning: $repo_name → $dest/"
+        # Add to clone list
+        repos_to_clone+=("$repo_name|$dest")
+      done <<< "$selected_repos"
+
+      # Phase 2: Clone repositories in parallel
+      if [[ ${#repos_to_clone[@]} -gt 0 ]]; then
+        log_info "Cloning ${#repos_to_clone[@]} repositories (max ${CLONE_PARALLEL_JOBS} parallel jobs)..."
+        echo ""
 
         if [[ "$DRY_RUN" == "true" ]]; then
-          log_dry_run "Would clone: $group/$repo_name -> $repo_path"
-          ((total_cloned++))
+          for repo_info in "${repos_to_clone[@]}"; do
+            local repo_name dest
+            repo_name=$(echo "$repo_info" | cut -d'|' -f1)
+            dest=$(echo "$repo_info" | cut -d'|' -f2)
+            log_dry_run "Would clone: $group/$repo_name -> $DEV_ROOT/$dest/$repo_name"
+            ((total_cloned++))
+          done
         else
-          # Ensure destination directory exists
-          ensure_directory "$DEV_ROOT/$dest"
+          local running_jobs=0
+          local -a clone_pids=()
 
-          # Clone using glab
-          glab repo clone "$group/$repo_name" "$repo_path" || {
-            log_error "Failed to clone: $repo_name"
-            continue
-          }
+          for repo_info in "${repos_to_clone[@]}"; do
+            local repo_name dest
+            repo_name=$(echo "$repo_info" | cut -d'|' -f1)
+            dest=$(echo "$repo_info" | cut -d'|' -f2)
 
-          log_success "Cloned: $repo_name"
-          ((total_cloned++))
+            # Wait if we've reached max parallel jobs
+            while [[ $running_jobs -ge $CLONE_PARALLEL_JOBS ]]; do
+              wait -n  # Wait for any job to finish
+              ((running_jobs--))
+            done
+
+            # Launch clone in background
+            (
+              clone_single_gitlab_repo "$repo_name" "$group" "$dest"
+            ) &
+            clone_pids+=($!)
+            ((running_jobs++))
+          done
+
+          # Wait for all remaining jobs
+          for pid in "${clone_pids[@]}"; do
+            if wait "$pid"; then
+              ((total_cloned++))
+            fi
+          done
+
+          echo ""
+          log_success "Cloned $total_cloned repositories from $group"
         fi
-      done <<< "$selected_repos"
+      fi
 
     done <<< "$gitlab_groups"
   fi

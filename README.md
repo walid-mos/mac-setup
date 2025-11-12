@@ -283,8 +283,8 @@ BACKUP_EXISTING_CONFIGS=true
 # Directory structure (dynamic from TOML)
 DEV_ROOT="$HOME/Development"
 
-# Cloning
-CLONE_PARALLEL_JOBS=5
+# Cloning (parallel jobs for faster cloning)
+CLONE_PARALLEL_JOBS=5               # Number of repos to clone simultaneously
 
 # Node.js Configuration
 NODEJS_DEFAULT_VERSION="latest"  # fnm install version
@@ -303,9 +303,9 @@ FINDER_SHOW_HIDDEN=true
 
 ## Interactive Features
 
-### Repository Cloning (Module 09) - Intelligent & Dynamic
+### Repository Cloning (Module 11) - Intelligent, Dynamic & Parallel
 
-The script provides **intelligent destination mapping**:
+The script provides **intelligent destination mapping** and **parallel cloning** for maximum speed:
 
 1. **Automatic Mapping**: Repos clone to destinations based on organization
    - `nextnode` org → `~/Development/nextnode/`
@@ -324,9 +324,18 @@ The script provides **intelligent destination mapping**:
    - If no mapping exists, asks interactively where to clone
    - Can create new destination folders on the fly
 
+5. **Parallel Cloning** (🚀 New!):
+   - Clones up to 5 repositories simultaneously (configurable)
+   - Dramatically reduces wait time for multiple repos
+   - Safe with proper job pool management
+   - Configure via `CLONE_PARALLEL_JOBS` (default: 5)
+
 ```bash
-# Will show intelligent repo selection
-./setup.sh --module 09
+# Will show intelligent repo selection with parallel cloning
+./setup.sh --module clone-repos
+
+# Increase parallel jobs for faster cloning (if you have good bandwidth)
+CLONE_PARALLEL_JOBS=10 ./setup.sh --module clone-repos
 ```
 
 ### Conflict Handling (Module 03)
