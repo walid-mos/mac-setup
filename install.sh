@@ -40,6 +40,21 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# Cleanup
+# -----------------------------------------------------------------------------
+
+CLEANUP_ON_EXIT="false"
+
+cleanup() {
+  if [[ -d "${INSTALL_DIR}" && "${CLEANUP_ON_EXIT}" == "true" ]]; then
+    print_info "Cleaning up temporary files..."
+    rm -rf "${INSTALL_DIR}"
+  fi
+}
+
+trap cleanup EXIT
+
+# -----------------------------------------------------------------------------
 # Functions
 # -----------------------------------------------------------------------------
 
@@ -154,7 +169,7 @@ ${BLUE}${BOLD}╔═════════════════════
 ╚═══════════════════════════════════════════════════════════════╝${NC}
 
 This installer will:
-  ${BOLD}1.${NC} Clone the dotfiles repository to: ${BOLD}${INSTALL_DIR}${NC} (temporary)
+  ${BOLD}1.${NC} Clone the mac-setup repository to: ${BOLD}${INSTALL_DIR}${NC} (temporary)
   ${BOLD}2.${NC} Run the automated macOS setup script
 
 The setup script will install:
@@ -169,7 +184,7 @@ The setup script will install:
 ${YELLOW}${BOLD}⚠️  This will modify your system configuration${NC}
 
 For more information:
-  ${BLUE}https://github.com/walid-mos/dotfiles/tree/main/mac-setup${NC}
+  ${BLUE}https://github.com/walid-mos/mac-setup${NC}
 
 EOF
 }
@@ -244,6 +259,9 @@ clone_repository() {
     }
 
     print_success "Repository cloned successfully"
+
+    # Enable cleanup on exit (in case script fails later)
+    CLEANUP_ON_EXIT="true"
   fi
 }
 
@@ -266,13 +284,17 @@ run_setup() {
   fi
 
   # Pass through any additional arguments to setup.sh
-  cd "${INSTALL_DIR}/mac-setup" || {
-    print_error "Failed to enter mac-setup directory"
+  cd "${INSTALL_DIR}" || {
+    print_error "Failed to enter repository directory"
     exit 1
   }
 
   # Execute setup.sh with passed arguments
-  "${SETUP_SCRIPT}" "${SETUP_ARGS[@]}"
+  if [[ ${#SETUP_ARGS[@]} -gt 0 ]]; then
+    "${SETUP_SCRIPT}" "${SETUP_ARGS[@]}"
+  else
+    "${SETUP_SCRIPT}"
+  fi
   local setup_exit_code=$?
 
   if [[ ${setup_exit_code} -ne 0 ]]; then
@@ -301,7 +323,7 @@ ${BOLD}Next steps:${NC}
   ${GREEN}3.${NC} Restart your terminal to load new configurations
 
 ${BLUE}For more information:${NC}
-  ${BLUE}https://github.com/walid-mos/dotfiles/tree/main/mac-setup${NC}
+  ${BLUE}https://github.com/walid-mos/mac-setup${NC}
 
 EOF
 }
@@ -353,7 +375,7 @@ ${BOLD}REQUIREMENTS:${NC}
   - curl (pre-installed on macOS)
 
 ${BOLD}MORE INFO:${NC}
-  ${BLUE}https://github.com/walid-mos/dotfiles/tree/main/mac-setup${NC}
+  ${BLUE}https://github.com/walid-mos/mac-setup${NC}
 
 EOF
 }
@@ -391,6 +413,10 @@ main() {
   confirm_installation
   clone_repository
   run_setup
+
+  # Disable cleanup on successful completion
+  CLEANUP_ON_EXIT="false"
+
   show_success_message
 }
 
