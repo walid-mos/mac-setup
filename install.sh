@@ -18,7 +18,8 @@ set -eo pipefail
 # -----------------------------------------------------------------------------
 
 REPO_URL="https://github.com/walid-mos/dotfiles.git"
-INSTALL_DIR="${HOME}/.stow_repository"
+DOTFILES_BRANCH="main"
+INSTALL_DIR="/tmp/mac-setup-$$"
 SETUP_SCRIPT="${INSTALL_DIR}/mac-setup/setup.sh"
 
 # Colors for output (using tput for maximum compatibility)
@@ -153,7 +154,7 @@ ${BLUE}${BOLD}╔═════════════════════
 ╚═══════════════════════════════════════════════════════════════╝${NC}
 
 This installer will:
-  ${BOLD}1.${NC} Clone the dotfiles repository to: ${BOLD}${INSTALL_DIR}${NC}
+  ${BOLD}1.${NC} Clone the dotfiles repository to: ${BOLD}${INSTALL_DIR}${NC} (temporary)
   ${BOLD}2.${NC} Run the automated macOS setup script
 
 The setup script will install:
@@ -215,7 +216,7 @@ clone_repository() {
         exit 1
       }
 
-      git pull origin main || {
+      git pull origin "${DOTFILES_BRANCH}" || {
         print_error "Failed to update repository"
         echo "You may need to manually resolve conflicts in: ${INSTALL_DIR}"
         exit 1
@@ -231,13 +232,14 @@ clone_repository() {
     fi
   else
     # Clone repository
-    git clone "${REPO_URL}" "${INSTALL_DIR}" || {
+    git clone -b "${DOTFILES_BRANCH}" "${REPO_URL}" "${INSTALL_DIR}" || {
       print_error "Failed to clone repository"
       echo ""
       echo "This could be due to:"
       echo "  - Network connectivity issues"
       echo "  - Repository URL changed"
       echo "  - Git authentication required"
+      echo "  - Branch '${DOTFILES_BRANCH}' does not exist"
       exit 1
     }
 
@@ -287,11 +289,11 @@ ${GREEN}${BOLD}╔════════════════════�
 ║           Mac Setup Installation Complete! 🎉                 ║
 ╚═══════════════════════════════════════════════════════════════╝${NC}
 
-${BOLD}Configuration location:${NC}
-  ${INSTALL_DIR}
+${BOLD}Dotfiles location:${NC}
+  ~/.stow_repository (managed by GNU Stow)
 
 ${BOLD}To re-run the setup:${NC}
-  cd ${INSTALL_DIR}/mac-setup && ./setup.sh
+  Run the installer again with: bash <(curl -fsSL ...)
 
 ${BOLD}Next steps:${NC}
   ${GREEN}1.${NC} Authenticate with GitHub:  ${BOLD}gh auth login${NC}

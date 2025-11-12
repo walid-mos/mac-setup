@@ -39,10 +39,11 @@ bash <(curl -fsSL https://raw.githubusercontent.com/walid-mos/dotfiles/main/mac-
 
 This will:
 1. Verify prerequisites (git, bash)
-2. Clone the repository to `~/.stow_repository`
+2. Clone the repository to `/tmp` (temporary)
 3. Show a summary of what will be installed
 4. Ask for confirmation before proceeding
 5. Run the full setup automatically
+6. Dotfiles are installed to `~/.stow_repository` (permanent)
 
 **Options:**
 ```bash

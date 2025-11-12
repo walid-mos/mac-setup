@@ -13,7 +13,7 @@
 # -----------------------------------------------------------------------------
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/walid-mos/dotfiles.git}"
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.stow_repository}"
-DOTFILES_BRANCH="${DOTFILES_BRANCH:-main}"
+DOTFILES_BRANCH="${DOTFILES_BRANCH:-v3}"
 
 # -----------------------------------------------------------------------------
 # Stow Configuration
@@ -42,13 +42,6 @@ VERBOSE_MODE="${VERBOSE_MODE:-false}"
 HOMEBREW_INSTALL_URL="${HOMEBREW_INSTALL_URL:-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh}"
 HOMEBREW_PATH="${HOMEBREW_PATH:-/opt/homebrew/bin/brew}"
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
-
-# -----------------------------------------------------------------------------
-# Curl Tools URLs
-# -----------------------------------------------------------------------------
-CLAUDE_CLI_INSTALL_URL="${CLAUDE_CLI_INSTALL_URL:-https://storage.googleapis.com/anthropic-release-public/claude-cli/latest/install.sh}"
-FNM_INSTALL_URL="${FNM_INSTALL_URL:-https://fnm.vercel.app/install}"
-PNPM_INSTALL_URL="${PNPM_INSTALL_URL:-https://get.pnpm.io/install.sh}"
 
 # -----------------------------------------------------------------------------
 # Oh My Zsh Configuration

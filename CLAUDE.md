@@ -54,6 +54,11 @@ Summary report
 
 **Primary use case**: Install on a brand new Mac without any prior setup.
 
+**Architecture**:
+- `install.sh` clones to `/tmp/mac-setup-$$` (temporary, auto-cleaned by OS)
+- `setup.sh` runs from `/tmp` and installs dotfiles to `~/.stow_repository` (permanent)
+- Installation scripts are disposable, only dotfiles persist
+
 ### Design Philosophy
 
 - **Zero external dependencies**: Uses ONLY tools present on macOS by default
@@ -106,12 +111,14 @@ install.sh
    - Default: NO (safe option)
   ↓
 4. Clone Repository
-   - To ~/.stow_repository
-   - Or update if already exists
+   - To /tmp/mac-setup-$$ (temporary location)
+   - From branch specified in DOTFILES_BRANCH (default: main)
+   - Or update if already exists (unlikely in /tmp)
   ↓
 5. Launch setup.sh
    - Pass through all args (--dry-run, --verbose, etc.)
-   - Execute from cloned location
+   - Execute from /tmp location
+   - setup.sh will clone dotfiles to ~/.stow_repository (permanent)
   ↓
 6. Success Message
    - Next steps
@@ -223,6 +230,28 @@ bash install.sh
 ```
 
 **⚠️ CRITICAL**: Never use tools not present on fresh macOS in `install.sh`!
+
+### Configuration Variables
+
+The bootstrap script uses these configuration variables (lines 20-23):
+
+```bash
+REPO_URL="https://github.com/walid-mos/dotfiles.git"
+DOTFILES_BRANCH="main"                    # Branch to clone
+INSTALL_DIR="/tmp/mac-setup-$$"           # Temporary directory (PID-based unique name)
+SETUP_SCRIPT="${INSTALL_DIR}/mac-setup/setup.sh"
+```
+
+**Override via environment variables:**
+```bash
+# Use different branch
+DOTFILES_BRANCH="develop" bash <(curl -fsSL .../install.sh)
+
+# Use different repo (for testing forks)
+REPO_URL="https://github.com/myuser/dotfiles.git" bash <(curl -fsSL .../install.sh)
+```
+
+**Important**: `INSTALL_DIR` is temporary - scripts are auto-cleaned by OS. Only dotfiles in `~/.stow_repository` persist.
 
 ### File Locations
 
