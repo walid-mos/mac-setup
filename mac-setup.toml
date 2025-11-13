@@ -13,7 +13,6 @@
 claude_cli = 'curl -fsSL https://claude.ai/install.sh | bash'
 fnm = 'curl -fsSL https://fnm.vercel.app/install | bash'
 pnpm = 'curl -fsSL https://get.pnpm.io/install.sh | sh -'
-oh_my_zsh = 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"'
 rust = 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh'
 
 # -----------------------------------------------------------------------------
@@ -166,8 +165,8 @@ gitlab_groups = [
 # Mapping: organization/group → destination folder
 # Repos from these orgs will be cloned to ~/Development/<destination>/
 [repositories.destinations]
-NextNodeSolutions = "nextnode"
-walid-mos = "saas"
+NextNodeSolutions = "Nextnode"
+walid-mos = "SaaS"
 igocreate = "clients/igocreate"
 
 # Exceptions: specific repo → custom destination

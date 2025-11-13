@@ -141,6 +141,12 @@ module_stow_dotfiles() {
           local conflicting_files
           conflicting_files=$(echo "$stow_output" | grep "existing target is" | awk '{print $NF}')
 
+          log_info "Conflicting files detected:"
+          echo "$conflicting_files" | while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            log_info "  - $file"
+          done
+
           while IFS= read -r file; do
             [[ -z "$file" ]] && continue
             local full_path="$HOME/$file"
@@ -174,7 +180,10 @@ module_stow_dotfiles() {
         fi
       else
         log_error "Stow failed for: $package"
-        log_verbose "$stow_output"
+        log_error "Stow output:"
+        echo "$stow_output" | while IFS= read -r line; do
+          log_error "  $line"
+        done
         ((failed++))
       fi
     else

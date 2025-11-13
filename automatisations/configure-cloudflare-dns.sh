@@ -25,7 +25,6 @@ GOOGLE_DNS_FALLBACK="8.8.8.8"
 
 # Interfaces to exclude (inactive or virtual)
 EXCLUDED_INTERFACES=(
-  "*"  # Asterisk line from networksetup output
   "iPhone USB"
   "Bluetooth PAN"
   "Thunderbolt Bridge"
@@ -141,7 +140,7 @@ automation_configure_cloudflare_dns() {
   log_step "Detecting network interfaces..."
 
   local all_interfaces
-  all_interfaces=$(networksetup -listallnetworkservices 2>/dev/null)
+  all_interfaces=$(networksetup -listallnetworkservices 2>/dev/null | tail -n +2)
 
   if [[ -z "$all_interfaces" ]]; then
     log_error "Failed to list network interfaces"
