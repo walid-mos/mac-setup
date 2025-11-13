@@ -286,8 +286,8 @@ module_clone_repos() {
         # Store repo data for later
         repo_data+=("$repo_name|$ssh_url|$dest")
 
-        # Format for fzf display
-        repo_list_with_dest+=$(printf "%-40s [%-30s] %s\n" "$repo_name" "$dest" "$repo_desc")
+        # Format for fzf display (delimiter-based)
+        repo_list_with_dest+=$(printf "%s|%s|%s\n" "$repo_name" "$dest" "$repo_desc")
       done < <(echo "$repos" | jq -c '.[]')
 
       if [[ -z "$repo_list_with_dest" ]]; then
@@ -303,9 +303,13 @@ module_clone_repos() {
       selected_repos=$(echo "$repo_list_with_dest" | fzf --multi \
         --height=80% \
         --border \
+        --delimiter='|' \
+        --with-nth=1,2 \
+        --nth=1 \
         --header="Select repos to clone from $org (Tab=multi-select, Enter=confirm)" \
-        --preview="echo {}" \
-        --preview-window=up:3:wrap)
+        --preview="echo {3}" \
+        --preview-window=up:3:wrap \
+        --preview-label="Description")
 
       if [[ -z "$selected_repos" ]]; then
         log_info "No repositories selected for $org"
@@ -317,7 +321,7 @@ module_clone_repos() {
 
       while IFS= read -r selected_line; do
         local repo_name
-        repo_name=$(echo "$selected_line" | awk '{print $1}')
+        repo_name=$(echo "$selected_line" | cut -d'|' -f1)
 
         # Find repo data
         local repo_info
@@ -467,7 +471,7 @@ module_clone_repos() {
         fi
 
         repo_names+=("$repo_name|$dest")
-        repo_list_with_dest+=$(printf "%-40s [%-30s]\n" "$repo_name" "$dest")
+        repo_list_with_dest+=$(printf "%s|%s\n" "$repo_name" "$dest")
       done < <(echo "$repos" | tail -n +2)
 
       if [[ -z "$repo_list_with_dest" ]]; then
@@ -482,8 +486,10 @@ module_clone_repos() {
       selected_repos=$(echo "$repo_list_with_dest" | fzf --multi \
         --height=80% \
         --border \
-        --header="Select repos to clone from $group" \
-        --preview="echo {}")
+        --delimiter='|' \
+        --with-nth=1,2 \
+        --nth=1 \
+        --header="Select repos to clone from $group (Tab=multi-select, Enter=confirm)")
 
       if [[ -z "$selected_repos" ]]; then
         log_info "No repositories selected for $group"
@@ -495,7 +501,7 @@ module_clone_repos() {
 
       while IFS= read -r selected_line; do
         local repo_name
-        repo_name=$(echo "$selected_line" | awk '{print $1}')
+        repo_name=$(echo "$selected_line" | cut -d'|' -f1)
 
         # Find destination
         local repo_info dest

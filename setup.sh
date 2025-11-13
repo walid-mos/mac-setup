@@ -37,6 +37,8 @@ source "$SCRIPT_DIR/modules/brew-packages.sh"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/brew-casks.sh"
 # shellcheck disable=SC1091
+source "$SCRIPT_DIR/modules/permissions-preflight.sh"
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/stow-dotfiles.sh"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/git-config.sh"
@@ -84,6 +86,7 @@ MODULES (in execution order):
   curl-tools          - Curl-based tools (Claude CLI, fnm, pnpm)
   brew-packages       - Homebrew packages (stow, neovim, etc.)
   brew-casks          - Homebrew applications
+  permissions-preflight - Full Disk Access check and app registration
   stow-dotfiles       - Stow dotfiles (dynamic package detection)
   git-config          - Git configuration
   directories         - Directory structure
@@ -214,7 +217,7 @@ main() {
   display_validation_summary
 
   # Track module execution
-  local total_modules=11
+  local total_modules=12
   local successful_modules=0
   local failed_modules=0
 
@@ -264,6 +267,13 @@ main() {
 
   # Brew Casks (applications)
   if run_module "brew-casks" "Brew Casks" "module_brew_casks"; then
+    ((successful_modules++))
+  else
+    ((failed_modules++))
+  fi
+
+  # Permissions Pre-Flight (FDA check and app registration)
+  if run_module "permissions-preflight" "Permissions Pre-Flight" "module_permissions_preflight"; then
     ((successful_modules++))
   else
     ((failed_modules++))

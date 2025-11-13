@@ -20,7 +20,7 @@ rust = 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh'
 # -----------------------------------------------------------------------------
 [git]
 user_name = "walid-mos"
-user_email = "pro.walid.mostefaoui@gmail.com"
+user_email = "walidmostefaoui@nextnode.fr"
 push_auto_setup_remote = true
 
 # -----------------------------------------------------------------------------
@@ -175,6 +175,19 @@ igocreate = "clients/igocreate"
 florist-bouquet-preview = "clients/fleurs-aujourdhui"
 # Add more exceptions as needed:
 # my-special-project = "clients/autre-client"
+
+# -----------------------------------------------------------------------------
+# Permissions & App Registration
+# -----------------------------------------------------------------------------
+# Applications that need to be registered with LaunchServices/TCC before
+# system configuration (run by permissions-preflight module)
+[permissions]
+# Apps to register (will be launched briefly then killed)
+# Format: app_name (must match .app bundle name in /Applications/)
+register_apps = [
+  "Ghostty",
+  "Discord"
+]
 
 # -----------------------------------------------------------------------------
 # Automatisations

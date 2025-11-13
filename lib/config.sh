@@ -100,7 +100,8 @@ SYSTEM_SPACES_SPAN_DISPLAYS="${SYSTEM_SPACES_SPAN_DISPLAYS:-true}"
 # -----------------------------------------------------------------------------
 # Node.js Configuration
 # -----------------------------------------------------------------------------
-NODEJS_DEFAULT_VERSION="${NODEJS_DEFAULT_VERSION:-latest}"  # fnm install version
+# Valid values: "22", "20", "lts", "latest", or specific versions like "22.21.1"
+NODEJS_DEFAULT_VERSION="${NODEJS_DEFAULT_VERSION:-22}"  # fnm install version
 
 # -----------------------------------------------------------------------------
 # Docker/Colima Configuration
@@ -121,6 +122,7 @@ BREW_INSTALL_TIMEOUT="${BREW_INSTALL_TIMEOUT:-1800}"
 # Script Behavior
 # -----------------------------------------------------------------------------
 DRY_RUN="${DRY_RUN:-false}"
+NON_INTERACTIVE="${NON_INTERACTIVE:-false}"  # Skip interactive prompts
 SKIP_MODULES=()  # Array of module numbers to skip (e.g., "05" "09")
 RUN_ONLY_MODULE=""  # Run only a specific module (e.g., "03")
 
@@ -167,6 +169,6 @@ export SYSTEM_DISABLE_GATEKEEPER SYSTEM_FAST_KEY_REPEAT SYSTEM_SPACES_SPAN_DISPL
 export NODEJS_DEFAULT_VERSION
 export COLIMA_CPU COLIMA_MEMORY COLIMA_DISK COLIMA_ARCH
 export CURL_TIMEOUT GIT_CLONE_TIMEOUT BREW_INSTALL_TIMEOUT
-export DRY_RUN SKIP_MODULES RUN_ONLY_MODULE
+export DRY_RUN NON_INTERACTIVE SKIP_MODULES RUN_ONLY_MODULE
 export TOML_CONFIG
 export SCRIPT_VERSION SCRIPT_NAME SCRIPT_AUTHOR

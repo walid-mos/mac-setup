@@ -81,13 +81,8 @@ module_macos_defaults() {
     return 0
   fi
 
-  # Check Full Disk Access permission if required
-  if [[ "$REQUIRE_FULL_DISK_ACCESS" == "true" ]]; then
-    if ! prompt_for_permissions; then
-      log_error "Full Disk Access check failed or aborted by user"
-      return 1
-    fi
-  fi
+  # Full Disk Access is handled by permissions-preflight module
+  # No need to check again here - assume it's already granted
 
   # Dock Configuration
   log_subsection "Dock Settings"

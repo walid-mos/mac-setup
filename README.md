@@ -287,7 +287,8 @@ DEV_ROOT="$HOME/Development"
 CLONE_PARALLEL_JOBS=5               # Number of repos to clone simultaneously
 
 # Node.js Configuration
-NODEJS_DEFAULT_VERSION="latest"  # fnm install version
+# Valid values: "22", "20", "lts", "latest", or specific versions like "22.21.1"
+NODEJS_DEFAULT_VERSION="22"  # fnm install version (default: Node.js 22.x)
 
 # Docker/Colima Configuration
 COLIMA_CPU=4                # Number of CPUs
@@ -361,7 +362,8 @@ The `automatisations/` directory allows you to add **custom automation scripts**
 
 #### 1. `setup-nodejs.sh` (Active by default)
 Configures Node.js environment via fnm:
-- Installs Node.js version specified in `NODEJS_DEFAULT_VERSION` (default: `"latest"`)
+- Installs Node.js version specified in `NODEJS_DEFAULT_VERSION` (default: `"22"`)
+  - Supported values: `"22"`, `"20"`, `"lts"`, `"latest"`, or specific versions like `"22.21.1"`
 - Sets as default version
 - Verifies pnpm installation
 

@@ -51,28 +51,65 @@ automation_setup_nodejs() {
   # Install Node.js version from config
   log_step "Installation de Node.js version: $NODEJS_DEFAULT_VERSION"
 
+  # Determine install command based on version string
+  local install_cmd="fnm install"
+  local version_arg="$NODEJS_DEFAULT_VERSION"
+
+  case "$NODEJS_DEFAULT_VERSION" in
+    "lts")
+      install_cmd="fnm install --lts"
+      version_arg=""
+      ;;
+    "latest")
+      install_cmd="fnm install --latest"
+      version_arg=""
+      ;;
+    *)
+      # Numeric version or specific version string
+      install_cmd="fnm install"
+      version_arg="$NODEJS_DEFAULT_VERSION"
+      ;;
+  esac
+
   if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would execute: fnm install $NODEJS_DEFAULT_VERSION"
+    log_info "[DRY RUN] Would execute: $install_cmd $version_arg"
   else
-    if fnm install "$NODEJS_DEFAULT_VERSION"; then
-      log_success "Node.js $NODEJS_DEFAULT_VERSION installé"
+    if [[ -n "$version_arg" ]]; then
+      if $install_cmd "$version_arg"; then
+        log_success "Node.js $NODEJS_DEFAULT_VERSION installé"
+      else
+        log_error "Échec de l'installation de Node.js"
+        return 1
+      fi
     else
-      log_error "Échec de l'installation de Node.js"
-      return 1
+      if $install_cmd; then
+        log_success "Node.js $NODEJS_DEFAULT_VERSION installé"
+      else
+        log_error "Échec de l'installation de Node.js"
+        return 1
+      fi
     fi
   fi
 
-  # Set as default version
+  # Set as default version (get actual installed version)
   log_step "Configuration de la version par défaut..."
 
+  # Get the actual installed version
+  local actual_version
+  actual_version=$(fnm current 2>/dev/null || fnm list | tail -1 | awk '{print $1}')
+
   if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would execute: fnm default $NODEJS_DEFAULT_VERSION"
+    log_info "[DRY RUN] Would execute: fnm default <installed-version>"
   else
-    if fnm default "$NODEJS_DEFAULT_VERSION"; then
-      log_success "Version par défaut définie: $NODEJS_DEFAULT_VERSION"
+    if [[ -n "$actual_version" ]]; then
+      if fnm default "$actual_version"; then
+        log_success "Version par défaut définie: $actual_version"
+      else
+        log_error "Échec de la définition de la version par défaut"
+        return 1
+      fi
     else
-      log_error "Échec de la définition de la version par défaut"
-      return 1
+      log_warning "Impossible de déterminer la version installée"
     fi
   fi
 
