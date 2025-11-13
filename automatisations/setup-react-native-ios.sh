@@ -90,6 +90,14 @@ automation_setup_react_native_ios() {
   log_subsection "Configuration de l'environnement React Native iOS"
 
   # ----------------------------------
+  # Step 0: Ensure Homebrew Ruby is in PATH
+  # ----------------------------------
+  # Prepend Homebrew Ruby to PATH for this script execution
+  # This ensures we use Ruby 3.x from Homebrew, not system Ruby 2.6.x
+  export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
+  export PATH="/opt/homebrew/lib/ruby/gems/3.4.0/bin:$PATH"
+
+  # ----------------------------------
   # Step 1: Verify macOS
   # ----------------------------------
   log_step "Vérification du système d'exploitation..."
