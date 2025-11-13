@@ -395,6 +395,22 @@ my-task = true
   - Background jobs with PID tracking for proper error handling
   - Dramatically faster for multiple repositories
 
+### macOS Defaults Module Details
+- **System preferences**: Configures Dock, Finder, and system settings
+- **Full Disk Access**: Required for most settings (handled by permissions-preflight module)
+- **Computer Name Configuration** (New!):
+  - Interactive prompt to configure computer name during setup
+  - Uses current Apple-assigned name as default
+  - Sets all three macOS name types:
+    - `ComputerName`: User-friendly name (System Settings, network shares)
+    - `LocalHostName`: Bonjour hostname (sanitized, used for .local)
+    - `HostName`: Fully qualified domain name
+  - Requires sudo access
+  - Controlled by `PROMPT_COMPUTER_NAME` flag (default: true)
+  - Name validation: max 63 chars, special chars sanitized for LocalHostName
+  - Respects dry-run mode
+- **Service restart**: Automatically restarts Dock, Finder, SystemUIServer if `RESTART_SERVICES=true`
+
 ### Automatisations System
 - **Auto-discovery**: All `*.sh` files in `automatisations/`
 - **Execution order**: Alphabetical by filename
@@ -420,6 +436,7 @@ my-task = true
 - `STOW_ADOPT`: Merge vs backup on conflicts
 - `BACKUP_EXISTING_CONFIGS`: Auto-backup conflicts
 - `APPLY_MACOS_DEFAULTS`: Run macOS system preferences
+- `PROMPT_COMPUTER_NAME`: Prompt to configure computer name during setup (default: true)
 - `CLONE_PARALLEL_JOBS`: Number of parallel git clone jobs (default: 5)
 
 ### Timeouts (seconds)

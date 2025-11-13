@@ -224,6 +224,80 @@ module_macos_defaults() {
     log_info "Disabled press-and-hold for fast key repeat"
   fi
 
+  # Computer Name Configuration
+  log_subsection "Computer Name"
+
+  if [[ "$PROMPT_COMPUTER_NAME" == "true" ]]; then
+    # Get current computer name
+    local current_name
+    current_name=$(scutil --get ComputerName 2>/dev/null || echo "Not set")
+
+    log_info "Current computer name: $current_name"
+
+    if ask_yes_no "Would you like to configure the computer name?" "n"; then
+      log_info ""
+      log_info "Enter the desired computer name (or press Enter to keep current):"
+      log_info "This will set:"
+      log_info "  • ComputerName: User-friendly name shown in System Settings"
+      log_info "  • LocalHostName: Bonjour hostname (name.local)"
+      log_info "  • HostName: Fully qualified domain name"
+      log_info ""
+
+      read -r -p "Computer name [$current_name]: " new_name
+
+      # Use current name if user pressed Enter
+      new_name="${new_name:-$current_name}"
+
+      if [[ -n "$new_name" ]] && [[ "$new_name" != "$current_name" ]]; then
+        # Trim whitespace
+        new_name=$(echo "$new_name" | xargs)
+
+        # Validate length (max 63 chars per RFC 1123)
+        if [[ ${#new_name} -gt 63 ]]; then
+          log_error "Computer name too long (max 63 characters). Current length: ${#new_name}"
+          log_info "Please run the setup again with a shorter name."
+          return 1
+        fi
+
+        # Validate character set (RFC 1123 compliant: alphanumeric, space, dot, underscore, hyphen)
+        # Must start with alphanumeric character
+        if [[ ! "$new_name" =~ ^[a-zA-Z0-9][a-zA-Z0-9\ \._-]{0,62}$ ]]; then
+          log_error "Invalid characters in computer name"
+          log_info "Allowed: letters, numbers, spaces, dots, underscores, hyphens"
+          log_info "Must start with letter or number"
+          return 1
+        fi
+
+        # Sanitize for LocalHostName (remove spaces and special chars, trim leading/trailing hyphens)
+        local sanitized_name
+        sanitized_name=$(echo "$new_name" | sed 's/[^a-zA-Z0-9-]/-/g' | sed 's/^-//' | sed 's/-$//')
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+          log_dry_run "Would set ComputerName to: $new_name"
+          log_dry_run "Would set LocalHostName to: $sanitized_name"
+          log_dry_run "Would set HostName to: $sanitized_name"
+        else
+          log_info "Setting computer name (requires sudo)..."
+
+          # Acquire sudo once upfront
+          if ! sudo -v 2>/dev/null; then
+            log_error "Failed to acquire sudo privileges"
+            return 1
+          fi
+
+          # Set system names using helper function
+          set_system_name "ComputerName" "$new_name" || return 1
+          set_system_name "LocalHostName" "$sanitized_name" || return 1
+          set_system_name "HostName" "$sanitized_name" || return 1
+        fi
+      else
+        log_info "Keeping current computer name: $current_name"
+      fi
+    else
+      log_info "Skipping computer name configuration"
+    fi
+  fi
+
   # Restart affected services
   if [[ "$RESTART_SERVICES" == "true" ]]; then
     log_subsection "Restarting Services"

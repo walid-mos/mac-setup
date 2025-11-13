@@ -115,7 +115,7 @@ select_destination_interactive() {
 # -----------------------------------------------------------------------------
 clone_single_repo() {
   local repo_name="$1"
-  local ssh_url="$2"
+  local clone_url="$2"
   local dest="$3"
   local repo_path="$DEV_ROOT/$dest/$repo_name"
 
@@ -129,7 +129,7 @@ clone_single_repo() {
 
   # Capture stderr for error logging
   local stderr_output
-  stderr_output=$(run_with_timeout "$GIT_CLONE_TIMEOUT" git clone "$ssh_url" "$repo_path" 2>&1)
+  stderr_output=$(run_with_timeout "$GIT_CLONE_TIMEOUT" git clone "$clone_url" "$repo_path" 2>&1)
   local exit_code=$?
 
   if [[ $exit_code -eq 0 ]]; then
@@ -141,7 +141,7 @@ clone_single_repo() {
   else
     echo "✗ $repo_name" >&2
     # Log detailed error to log file (always logged, regardless of verbose mode)
-    log_git_error "$ssh_url" "$exit_code" "$stderr_output"
+    log_git_error "$clone_url" "$exit_code" "$stderr_output"
     if [[ "$VERBOSE_MODE" == "true" ]]; then
       # In verbose mode, also show error summary on console
       echo "  → Error: Exit code $exit_code" >&2
@@ -252,14 +252,17 @@ module_clone_repos() {
       fi
 
       # Configure gh to use HTTPS by default
+      # The 'url' field in the API response will respect this git_protocol setting
       log_verbose "Configuring gh to use HTTPS protocol"
       gh config set git_protocol https &>/dev/null || log_verbose "Could not set gh git_protocol (already set or permission issue)"
 
       # Fetch all repositories from organization
+      # NOTE: Using 'url' field instead of 'sshUrl' to respect git_protocol setting
+      # When git_protocol=https, the 'url' field returns HTTPS URLs
       log_info "Fetching repositories from $org..."
 
       local repos
-      repos=$(gh repo list "$org" --limit 1000 --json name,sshUrl,description 2>/dev/null)
+      repos=$(gh repo list "$org" --limit 1000 --json name,url,description 2>/dev/null)
 
       if [[ -z "$repos" ]] || [[ "$repos" == "[]" ]]; then
         log_warning "No repositories found for organization: $org"
@@ -273,11 +276,11 @@ module_clone_repos() {
       while IFS= read -r repo_json; do
         local repo_name
         local repo_desc
-        local ssh_url
+        local clone_url
 
         repo_name=$(echo "$repo_json" | jq -r '.name')
         repo_desc=$(echo "$repo_json" | jq -r '.description // "No description"')
-        ssh_url=$(echo "$repo_json" | jq -r '.sshUrl')
+        clone_url=$(echo "$repo_json" | jq -r '.url')
 
         # Get destination for this repo
         local dest
@@ -288,7 +291,7 @@ module_clone_repos() {
         fi
 
         # Store repo data for later
-        repo_data+=("$repo_name|$ssh_url|$dest")
+        repo_data+=("$repo_name|$clone_url|$dest")
 
         # Format for fzf display (delimiter-based)
         repo_list_with_dest+=$(printf "%s|%s|%s\n" "$repo_name" "$dest" "$repo_desc")
@@ -336,8 +339,8 @@ module_clone_repos() {
           continue
         fi
 
-        local ssh_url dest
-        ssh_url=$(echo "$repo_info" | cut -d'|' -f2)
+        local clone_url dest
+        clone_url=$(echo "$repo_info" | cut -d'|' -f2)
         dest=$(echo "$repo_info" | cut -d'|' -f3)
 
         # Handle repos without mapping
@@ -357,7 +360,7 @@ module_clone_repos() {
         fi
 
         # Add to clone list
-        repos_to_clone+=("$repo_name|$ssh_url|$dest")
+        repos_to_clone+=("$repo_name|$clone_url|$dest")
       done <<< "$selected_repos"
 
       # Phase 2: Clone repositories in parallel
@@ -378,9 +381,9 @@ module_clone_repos() {
           local -a clone_pids=()
 
           for repo_info in "${repos_to_clone[@]}"; do
-            local repo_name ssh_url dest
+            local repo_name clone_url dest
             repo_name=$(echo "$repo_info" | cut -d'|' -f1)
-            ssh_url=$(echo "$repo_info" | cut -d'|' -f2)
+            clone_url=$(echo "$repo_info" | cut -d'|' -f2)
             dest=$(echo "$repo_info" | cut -d'|' -f3)
 
             # Wait if we've reached max parallel jobs
@@ -391,7 +394,7 @@ module_clone_repos() {
 
             # Launch clone in background
             (
-              clone_single_repo "$repo_name" "$ssh_url" "$dest"
+              clone_single_repo "$repo_name" "$clone_url" "$dest"
             ) &
             clone_pids+=($!)
             ((running_jobs++))

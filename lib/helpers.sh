@@ -502,3 +502,19 @@ require_var() {
     log_error_exit "$error_message"
   fi
 }
+
+# -----------------------------------------------------------------------------
+# Set macOS system name (ComputerName, LocalHostName, or HostName)
+# -----------------------------------------------------------------------------
+set_system_name() {
+  local name_type="$1"  # ComputerName, LocalHostName, or HostName
+  local value="$2"
+
+  if ! sudo scutil --set "$name_type" -- "$value" 2>/dev/null; then
+    log_error "Failed to set $name_type"
+    return 1
+  fi
+
+  log_success "$name_type set to: $value"
+  return 0
+}
