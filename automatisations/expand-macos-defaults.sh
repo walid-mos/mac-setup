@@ -152,18 +152,8 @@ configure_energy() {
 configure_security() {
   log_step "Configuration de la sécurité..."
 
-  # Disable Gatekeeper - Allow apps from anywhere
-  if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would disable Gatekeeper (allow apps from anywhere)"
-  else
-    log_warning "Désactivation de Gatekeeper (permet l'installation d'apps non vérifiées)"
-    if sudo spctl --master-disable 2>/dev/null; then
-      log_success "Gatekeeper désactivé - apps de sources non identifiées autorisées"
-    else
-      log_error "Impossible de désactiver Gatekeeper (nécessite sudo)"
-      return 1
-    fi
-  fi
+  # Note: Gatekeeper disable is handled by the macos-defaults module
+  # to avoid duplicate prompts
 
   # Disable quarantine for downloaded files
   if [[ "$DRY_RUN" == "true" ]]; then
@@ -181,8 +171,8 @@ configure_security() {
     log_success "Avertissement développeurs non identifiés désactivé"
   fi
 
-  log_info "Note: Ces paramètres réduisent la sécurité mais facilitent le développement"
-  log_info "Vous pouvez réactiver Gatekeeper avec: sudo spctl --master-enable"
+  log_info "Note: Quarantine désactivée pour faciliter le développement"
+  log_info "Vous pouvez la réactiver avec: defaults write com.apple.LaunchServices LSQuarantine -bool true"
 }
 
 # ============================================================================

@@ -91,6 +91,7 @@ FINDER_VIEW_STYLE="${FINDER_VIEW_STYLE:-Clmv}"  # Column view
 FINDER_DISABLE_DS_STORE="${FINDER_DISABLE_DS_STORE:-true}"
 FINDER_HIDE_RECENT_TAGS="${FINDER_HIDE_RECENT_TAGS:-false}"  # Hide Recent Tags from sidebar
 FINDER_HIDE_NETWORK_BROWSER="${FINDER_HIDE_NETWORK_BROWSER:-false}"  # Hide network devices from Shared section
+FINDER_NEW_WINDOW_TARGET="${FINDER_NEW_WINDOW_TARGET:-PfHm}"  # Default folder for new windows: PfHm=Home, PfDe=Desktop, PfLo=Downloads, PfAf=Recents
 
 # System configuration
 SYSTEM_DISABLE_GATEKEEPER="${SYSTEM_DISABLE_GATEKEEPER:-true}"

@@ -136,6 +136,13 @@ module_macos_defaults() {
     log_info "Finder view style set to: $FINDER_VIEW_STYLE"
   fi
 
+  # Set default folder for new Finder windows
+  if [[ -n "$FINDER_NEW_WINDOW_TARGET" ]]; then
+    set_macos_default "com.apple.finder" "NewWindowTarget" "string" "$FINDER_NEW_WINDOW_TARGET"
+    set_macos_default "com.apple.finder" "NewWindowTargetPath" "string" "file://${HOME}/"
+    log_info "Finder new window default folder set to: Home directory (~)"
+  fi
+
   # Table view size mode (file info display)
   set_macos_default "NSGlobalDomain" "NSTableViewDefaultSizeMode" "int" "1"
   log_info "Table view default size mode set to small"
@@ -173,13 +180,41 @@ module_macos_defaults() {
   log_subsection "System Settings"
 
   if [[ "$SYSTEM_DISABLE_GATEKEEPER" == "true" ]]; then
-    log_info "Disabling Gatekeeper quarantine for downloaded apps..."
+    # Check if Gatekeeper is already disabled
+    local gatekeeper_status
+    gatekeeper_status=$(spctl --status 2>/dev/null || echo "unknown")
 
-    if [[ "$DRY_RUN" == "true" ]]; then
-      log_dry_run "Would run: sudo spctl --master-disable"
+    if [[ "$gatekeeper_status" == *"disabled"* ]]; then
+      log_success "Gatekeeper is already disabled"
     else
-      if ask_yes_no "This requires sudo. Disable Gatekeeper?" "y"; then
-        sudo spctl --master-disable || log_warning "Failed to disable Gatekeeper"
+      log_info "Disabling Gatekeeper to allow apps from anywhere..."
+      log_warning "Note: This reduces system security. Only do this if you understand the risks."
+
+      if [[ "$DRY_RUN" == "true" ]]; then
+        log_dry_run "Would run: sudo spctl --master-disable"
+      else
+        if ask_yes_no "This requires sudo. Disable Gatekeeper?" "y"; then
+          log_info ""
+          log_info "Attempting to disable Gatekeeper..."
+
+          if sudo spctl --master-disable 2>&1 | grep -q "confirmation in System Settings"; then
+            log_warning "⚠️  macOS Ventura+ Detected - Manual Step Required:"
+            log_info ""
+            log_info "  1. Open: System Settings > Privacy & Security"
+            log_info "  2. Scroll down to the 'Security' section"
+            log_info "  3. Look for 'Allow applications from: Anywhere'"
+            log_info "  4. Click 'Allow' to confirm the change"
+            log_info ""
+            log_info "The command has been executed, but macOS now requires manual confirmation."
+            log_info "Press any key after you've completed the manual step..."
+            read -n 1 -s -r
+            log_success "Gatekeeper disable confirmed"
+          elif sudo spctl --master-disable 2>/dev/null; then
+            log_success "Gatekeeper disabled successfully"
+          else
+            log_warning "Failed to disable Gatekeeper - this may require manual configuration"
+          fi
+        fi
       fi
     fi
   fi

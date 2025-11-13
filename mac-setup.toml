@@ -24,6 +24,14 @@ user_email = "walidmostefaoui@nextnode.fr"
 push_auto_setup_remote = true
 
 # -----------------------------------------------------------------------------
+# Node.js Configuration
+# -----------------------------------------------------------------------------
+# Node.js version to install via fnm
+# Valid values: "latest", "lts", "22", "20", or specific versions like "22.21.1"
+[nodejs]
+default_version = "latest"
+
+# -----------------------------------------------------------------------------
 # Homebrew Packages (Formula)
 # -----------------------------------------------------------------------------
 [brew.packages]
@@ -212,3 +220,18 @@ setup-react-native-ios = true
 # -----------------------------------------------------------------------------
 # Note: Directory paths, stow behavior, macOS defaults, and other settings
 # are configured in lib/config.sh for easier modification without TOML parsing.
+
+
+# -----------------------------------------------------------------------------
+# NAS Auto-Mount Configuration
+# -----------------------------------------------------------------------------
+[automations.nas-shares]
+enabled = true
+server = "192.168.1.2"
+display_name = "Server NAS"
+username = "wmostefaoui"
+mount_base = "/Volumes"
+wait_timeout = 60
+
+# Partages sélectionnés (modifiable)
+shares = ["Storage", "photo", "Exchange", "Medias"]

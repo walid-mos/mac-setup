@@ -140,9 +140,7 @@ automation_configure_app_permissions() {
   log_info ""
 
   # Discord Screen Recording
-  if ask_yes_no "Do you want to configure Discord Screen Recording permissions?" "y"; then
-    configure_discord_permissions
-  fi
+  configure_discord_permissions
 
   log_info ""
 

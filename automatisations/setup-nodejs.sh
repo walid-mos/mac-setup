@@ -15,6 +15,11 @@ if [[ -f "$PROJECT_ROOT/lib/config.sh" ]]; then
   source "$PROJECT_ROOT/lib/config.sh"
   source "$PROJECT_ROOT/lib/logger.sh"
   source "$PROJECT_ROOT/lib/helpers.sh"
+  source "$PROJECT_ROOT/lib/toml-parser.sh"
+
+  # Initialize TOML parser (for standalone execution)
+  # Will use dasel if available, fallback to awk otherwise
+  init_toml_parser 2>/dev/null || true
 fi
 
 # ============================================================================
@@ -22,6 +27,21 @@ fi
 # ============================================================================
 automation_setup_nodejs() {
   log_subsection "Configuration de Node.js via fnm"
+
+  # Read Node.js version from TOML config (fallback to env var or default)
+  local nodejs_version
+  nodejs_version=$(parse_toml_value "$TOML_CONFIG" "nodejs.default_version" 2>/dev/null)
+
+  # Fallback to environment variable or default if not set in TOML
+  if [[ -z "$nodejs_version" ]]; then
+    nodejs_version="${NODEJS_DEFAULT_VERSION:-22}"
+  fi
+
+  # Remove quotes if present (TOML parser may include them)
+  nodejs_version="${nodejs_version//\'/}"
+  nodejs_version="${nodejs_version//\"/}"
+
+  log_info "Version configurée: $nodejs_version"
 
   # Check if fnm is installed
   if ! command_exists fnm; then
@@ -49,13 +69,13 @@ automation_setup_nodejs() {
   log_success "fnm est disponible"
 
   # Install Node.js version from config
-  log_step "Installation de Node.js version: $NODEJS_DEFAULT_VERSION"
+  log_step "Installation de Node.js version: $nodejs_version"
 
   # Determine install command based on version string
   local install_cmd="fnm install"
-  local version_arg="$NODEJS_DEFAULT_VERSION"
+  local version_arg="$nodejs_version"
 
-  case "$NODEJS_DEFAULT_VERSION" in
+  case "$nodejs_version" in
     "lts")
       install_cmd="fnm install --lts"
       version_arg=""
@@ -67,7 +87,7 @@ automation_setup_nodejs() {
     *)
       # Numeric version or specific version string
       install_cmd="fnm install"
-      version_arg="$NODEJS_DEFAULT_VERSION"
+      version_arg="$nodejs_version"
       ;;
   esac
 
@@ -76,14 +96,14 @@ automation_setup_nodejs() {
   else
     if [[ -n "$version_arg" ]]; then
       if $install_cmd "$version_arg"; then
-        log_success "Node.js $NODEJS_DEFAULT_VERSION installé"
+        log_success "Node.js $nodejs_version installé"
       else
         log_error "Échec de l'installation de Node.js"
         return 1
       fi
     else
       if $install_cmd; then
-        log_success "Node.js $NODEJS_DEFAULT_VERSION installé"
+        log_success "Node.js $nodejs_version installé"
       else
         log_error "Échec de l'installation de Node.js"
         return 1
@@ -91,25 +111,18 @@ automation_setup_nodejs() {
     fi
   fi
 
-  # Set as default version (get actual installed version)
+  # Set as default version
   log_step "Configuration de la version par défaut..."
 
-  # Get the actual installed version
-  local actual_version
-  actual_version=$(fnm current 2>/dev/null || fnm list | tail -1 | awk '{print $1}')
-
   if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would execute: fnm default <installed-version>"
+    log_info "[DRY RUN] Would execute: fnm default $nodejs_version"
   else
-    if [[ -n "$actual_version" ]]; then
-      if fnm default "$actual_version"; then
-        log_success "Version par défaut définie: $actual_version"
-      else
-        log_error "Échec de la définition de la version par défaut"
-        return 1
-      fi
+    # Use the version we just installed
+    if fnm default "$nodejs_version"; then
+      log_success "Version par défaut définie: $nodejs_version"
     else
-      log_warning "Impossible de déterminer la version installée"
+      log_error "Échec de la définition de la version par défaut"
+      return 1
     fi
   fi
 

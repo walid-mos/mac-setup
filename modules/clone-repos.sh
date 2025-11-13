@@ -251,6 +251,10 @@ module_clone_repos() {
         fi
       fi
 
+      # Configure gh to use HTTPS by default
+      log_verbose "Configuring gh to use HTTPS protocol"
+      gh config set git_protocol https &>/dev/null || log_verbose "Could not set gh git_protocol (already set or permission issue)"
+
       # Fetch all repositories from organization
       log_info "Fetching repositories from $org..."
 
@@ -405,7 +409,7 @@ module_clone_repos() {
         fi
       fi
 
-    done <<< "$github_orgs"
+    done < <(printf '%s\n' "$github_orgs")
   fi
 
   # Process GitLab groups
@@ -424,7 +428,7 @@ module_clone_repos() {
       fi
 
       # Check if authenticated
-      if ! glab auth status &>/dev/null; then
+      if ! glab auth status </dev/null &>/dev/null 2>&1; then
         log_warning "GitLab CLI not authenticated"
 
         if ask_yes_no "Authenticate with GitLab now?" "y"; then
@@ -439,6 +443,10 @@ module_clone_repos() {
           break
         fi
       fi
+
+      # Configure glab to use HTTPS by default
+      log_verbose "Configuring glab to use HTTPS protocol"
+      glab config set -h gitlab.com git_protocol https &>/dev/null || log_verbose "Could not set glab git_protocol (already set or permission issue)"
 
       # Fetch repositories
       log_info "Fetching repositories from $group..."
@@ -576,7 +584,7 @@ module_clone_repos() {
         fi
       fi
 
-    done <<< "$gitlab_groups"
+    done < <(printf '%s\n' "$gitlab_groups")
   fi
 
   # Summary

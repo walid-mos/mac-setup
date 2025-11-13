@@ -64,20 +64,42 @@ module_git_config() {
     fi
   fi
 
+  # Configure HTTPS protocol for GitHub/GitLab (no SSH keys needed)
+  log_info "Configuring HTTPS protocol for GitHub and GitLab"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log_dry_run "Would set: git config --global url.\"https://github.com/\".insteadOf \"ssh://git@github.com/\""
+    log_dry_run "Would set: git config --global url.\"https://gitlab.com/\".insteadOf \"ssh://git@gitlab.com/\""
+  else
+    git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" || {
+      log_warning "Failed to set GitHub HTTPS URL rewrite"
+    }
+    git config --global url."https://gitlab.com/".insteadOf "ssh://git@gitlab.com/" || {
+      log_warning "Failed to set GitLab HTTPS URL rewrite"
+    }
+    log_success "HTTPS protocol configured for GitHub and GitLab"
+  fi
+
   # Display current git config
   log_subsection "Current Git Configuration"
 
   local current_name
   local current_email
   local current_push
+  local current_github_url
+  local current_gitlab_url
 
   current_name=$(git config --global user.name 2>/dev/null || echo "Not set")
   current_email=$(git config --global user.email 2>/dev/null || echo "Not set")
   current_push=$(git config --global push.autoSetupRemote 2>/dev/null || echo "Not set")
+  current_github_url=$(git config --global url."https://github.com/".insteadOf 2>/dev/null || echo "Not set")
+  current_gitlab_url=$(git config --global url."https://gitlab.com/".insteadOf 2>/dev/null || echo "Not set")
 
   echo -e "  user.name:            ${COLOR_CYAN}$current_name${COLOR_RESET}"
   echo -e "  user.email:           ${COLOR_CYAN}$current_email${COLOR_RESET}"
   echo -e "  push.autoSetupRemote: ${COLOR_CYAN}$current_push${COLOR_RESET}"
+  echo -e "  GitHub URL rewrite:   ${COLOR_CYAN}$current_github_url${COLOR_RESET}"
+  echo -e "  GitLab URL rewrite:   ${COLOR_CYAN}$current_gitlab_url${COLOR_RESET}"
   echo ""
 
   log_success "Git configuration completed"
