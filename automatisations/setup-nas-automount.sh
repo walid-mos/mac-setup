@@ -544,9 +544,9 @@ sanitize_hostname() {
   # Remove any characters that aren't alphanumeric, hyphens, or dots
   hostname=$(echo "$hostname" | sed 's/[^a-z0-9.-]//g')
 
-  # Add .local suffix if not present
-  if [[ ! "$hostname" =~ \.local$ ]]; then
-    hostname="${hostname}.local"
+  # Add .lan suffix if not present (avoid .local which triggers mDNS and bypasses /etc/hosts)
+  if [[ ! "$hostname" =~ \.(local|lan|home)$ ]]; then
+    hostname="${hostname}.lan"
   fi
 
   echo "$hostname"
@@ -806,19 +806,21 @@ do_interactive_setup() {
 
   # Step 1.5: Get display name (friendly name for Finder)
   echo ""
+  log_info "Le nom d'affichage personnalise comment le serveur apparaît dans Finder"
+  log_info "Exemple: 'Server NAS' → 'server-nas.lan' dans la barre latérale du Finder"
+  echo ""
+
   local nas_display_name
   read -r -p "Nom d'affichage pour le Finder [Server NAS]: " nas_display_name
   nas_display_name="${nas_display_name:-Server NAS}"  # Default to "Server NAS"
-
-  log_success "Nom d'affichage: $nas_display_name"
 
   # Step 1.6: Offer to add /etc/hosts entry for hostname resolution
   echo ""
   local suggested_hostname
   suggested_hostname=$(sanitize_hostname "$nas_display_name")
 
-  log_info "Hostname suggéré: $suggested_hostname"
-  log_info "Cela permettra au Finder d'afficher '$suggested_hostname' au lieu de l'IP"
+  log_success "Nom d'affichage: $nas_display_name"
+  log_info "Hostname généré: $suggested_hostname"
   echo ""
 
   local add_to_hosts
