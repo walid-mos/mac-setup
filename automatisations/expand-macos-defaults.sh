@@ -33,15 +33,6 @@ configure_trackpad() {
     defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
     log_success "Tap to click activé"
   fi
-
-  # Three finger drag
-  if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would enable three finger drag"
-  else
-    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerDrag -bool true
-    defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerDrag -bool true
-    log_success "Three finger drag activé"
-  fi
 }
 
 configure_screenshots() {

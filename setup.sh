@@ -37,8 +37,6 @@ source "$SCRIPT_DIR/modules/brew-packages.sh"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/brew-casks.sh"
 # shellcheck disable=SC1091
-source "$SCRIPT_DIR/modules/permissions-preflight.sh"
-# shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/stow-dotfiles.sh"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/modules/git-config.sh"
@@ -86,7 +84,6 @@ MODULES (in execution order):
   curl-tools          - Curl-based tools (Claude CLI, fnm, pnpm)
   brew-packages       - Homebrew packages (stow, neovim, etc.)
   brew-casks          - Homebrew applications
-  permissions-preflight - Full Disk Access check and app registration
   stow-dotfiles       - Stow dotfiles (dynamic package detection)
   git-config          - Git configuration
   directories         - Directory structure
@@ -197,6 +194,26 @@ run_module() {
 }
 
 # =============================================================================
+# Post-Setup Manual Steps
+# =============================================================================
+
+show_post_setup_manual_steps() {
+  log_section "Manual Steps Required"
+  log_info ""
+  log_info "The following configuration requires manual action in System Settings:"
+  log_info ""
+  log_subsection "Disable Gatekeeper (Allow Apps from Anywhere)"
+  log_step "1. Open: System Settings > Privacy & Security"
+  log_step "2. Scroll down to the 'Security' section"
+  log_step "3. Find 'Allow applications from:' and select 'Anywhere'"
+  log_step "4. Click 'Allow' to confirm the change"
+  log_info ""
+  log_info "Note: You may need to navigate away from Privacy & Security"
+  log_info "      and back to see the 'Anywhere' option appear."
+  log_info ""
+}
+
+# =============================================================================
 # Main Execution
 # =============================================================================
 
@@ -217,7 +234,7 @@ main() {
   display_validation_summary
 
   # Track module execution
-  local total_modules=12
+  local total_modules=11
   local successful_modules=0
   local failed_modules=0
 
@@ -267,13 +284,6 @@ main() {
 
   # Brew Casks (applications)
   if run_module "brew-casks" "Brew Casks" "module_brew_casks"; then
-    ((successful_modules++))
-  else
-    ((failed_modules++))
-  fi
-
-  # Permissions Pre-Flight (FDA check and app registration)
-  if run_module "permissions-preflight" "Permissions Pre-Flight" "module_permissions_preflight"; then
     ((successful_modules++))
   else
     ((failed_modules++))
@@ -332,6 +342,12 @@ main() {
   print_summary "$total_modules" "$successful_modules" "$failed_modules"
 
   log_info "Total execution time: ${minutes}m ${seconds}s"
+
+  # Show manual steps if Gatekeeper was configured
+  if [[ "$SYSTEM_DISABLE_GATEKEEPER" == "true" ]]; then
+    echo ""
+    show_post_setup_manual_steps
+  fi
 
   # Finalize logging
   finalize_logging

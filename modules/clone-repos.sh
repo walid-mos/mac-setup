@@ -240,8 +240,9 @@ module_clone_repos() {
 
         if ask_yes_no "Authenticate with GitHub now?" "y"; then
           log_info "Starting GitHub authentication..."
-          gh auth login || {
+          gh auth login < /dev/tty || {
             log_error "GitHub authentication failed - skipping GitHub repositories"
+            log_info "You can authenticate manually later with: gh auth login"
             break
           }
           log_success "GitHub authentication successful"
@@ -270,7 +271,7 @@ module_clone_repos() {
       fi
 
       # Build repo list with destinations for preview
-      local repo_list_with_dest=""
+      local -a repo_list_lines=()
       local repo_data=()
 
       while IFS= read -r repo_json; do
@@ -293,11 +294,11 @@ module_clone_repos() {
         # Store repo data for later
         repo_data+=("$repo_name|$clone_url|$dest")
 
-        # Format for fzf display (delimiter-based)
-        repo_list_with_dest+=$(printf "%s|%s|%s\n" "$repo_name" "$dest" "$repo_desc")
+        # Format for fzf display (delimiter-based) - using array to preserve newlines
+        repo_list_lines+=("$(printf "%s|%s|%s" "$repo_name" "$dest" "$repo_desc")")
       done < <(echo "$repos" | jq -c '.[]')
 
-      if [[ -z "$repo_list_with_dest" ]]; then
+      if [[ ${#repo_list_lines[@]} -eq 0 ]]; then
         log_warning "No repositories to display for $org"
         continue
       fi
@@ -307,7 +308,7 @@ module_clone_repos() {
       echo ""
 
       local selected_repos
-      selected_repos=$(echo "$repo_list_with_dest" | fzf --multi \
+      selected_repos=$(printf '%s\n' "${repo_list_lines[@]}" | fzf --multi \
         --height=80% \
         --border \
         --delimiter='|' \
@@ -436,8 +437,9 @@ module_clone_repos() {
 
         if ask_yes_no "Authenticate with GitLab now?" "y"; then
           log_info "Starting GitLab authentication..."
-          glab auth login || {
+          glab auth login < /dev/tty || {
             log_error "GitLab authentication failed - skipping GitLab repositories"
+            log_info "You can authenticate manually later with: glab auth login"
             break
           }
           log_success "GitLab authentication successful"
@@ -463,7 +465,7 @@ module_clone_repos() {
       fi
 
       # Parse and add destinations
-      local repo_list_with_dest=""
+      local -a repo_list_lines=()
       local repo_names=()
 
       while IFS= read -r repo_line; do
@@ -482,10 +484,10 @@ module_clone_repos() {
         fi
 
         repo_names+=("$repo_name|$dest")
-        repo_list_with_dest+=$(printf "%s|%s\n" "$repo_name" "$dest")
+        repo_list_lines+=("$(printf "%s|%s" "$repo_name" "$dest")")
       done < <(echo "$repos" | tail -n +2)
 
-      if [[ -z "$repo_list_with_dest" ]]; then
+      if [[ ${#repo_list_lines[@]} -eq 0 ]]; then
         continue
       fi
 
@@ -494,7 +496,7 @@ module_clone_repos() {
       echo ""
 
       local selected_repos
-      selected_repos=$(echo "$repo_list_with_dest" | fzf --multi \
+      selected_repos=$(printf '%s\n' "${repo_list_lines[@]}" | fzf --multi \
         --height=80% \
         --border \
         --delimiter='|' \

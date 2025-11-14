@@ -198,21 +198,11 @@ module_macos_defaults() {
           log_info "Attempting to disable Gatekeeper..."
 
           if sudo spctl --master-disable 2>&1 | grep -q "confirmation in System Settings"; then
-            log_warning "⚠️  macOS Ventura+ Detected - Manual Step Required:"
-            log_info ""
-            log_info "  1. Open: System Settings > Privacy & Security"
-            log_info "  2. Scroll down to the 'Security' section"
-            log_info "  3. Look for 'Allow applications from: Anywhere'"
-            log_info "  4. Click 'Allow' to confirm the change"
-            log_info ""
-            log_info "The command has been executed, but macOS now requires manual confirmation."
-            log_info "Press any key after you've completed the manual step..."
-            read -n 1 -s -r
-            log_success "Gatekeeper disable confirmed"
+            log_info "Gatekeeper command executed - manual confirmation required in System Settings"
           elif sudo spctl --master-disable 2>/dev/null; then
             log_success "Gatekeeper disabled successfully"
           else
-            log_warning "Failed to disable Gatekeeper - this may require manual configuration"
+            log_info "Gatekeeper configuration requires manual setup in System Settings"
           fi
         fi
       fi
@@ -249,8 +239,9 @@ module_macos_defaults() {
       new_name="${new_name:-$current_name}"
 
       if [[ -n "$new_name" ]] && [[ "$new_name" != "$current_name" ]]; then
-        # Trim whitespace
-        new_name=$(echo "$new_name" | xargs)
+        # Trim whitespace (leading and trailing)
+        new_name="${new_name#"${new_name%%[![:space:]]*}"}"
+        new_name="${new_name%"${new_name##*[![:space:]]}"}"
 
         # Validate length (max 63 chars per RFC 1123)
         if [[ ${#new_name} -gt 63 ]]; then
@@ -259,11 +250,11 @@ module_macos_defaults() {
           return 1
         fi
 
-        # Validate character set (RFC 1123 compliant: alphanumeric, space, dot, underscore, hyphen)
+        # Validate character set (RFC 1123 compliant: alphanumeric, space, dot, underscore, hyphen, apostrophe)
         # Must start with alphanumeric character
-        if [[ ! "$new_name" =~ ^[a-zA-Z0-9][a-zA-Z0-9\ \._-]{0,62}$ ]]; then
+        if [[ ! "$new_name" =~ ^[a-zA-Z0-9][a-zA-Z0-9\ \._\'-]{0,62}$ ]]; then
           log_error "Invalid characters in computer name"
-          log_info "Allowed: letters, numbers, spaces, dots, underscores, hyphens"
+          log_info "Allowed: letters, numbers, spaces, dots, underscores, hyphens, apostrophes"
           log_info "Must start with letter or number"
           return 1
         fi

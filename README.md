@@ -394,7 +394,7 @@ configure-docker = false
 
 #### 3. `expand-macos-defaults.sh` (Active by default)
 Additional macOS system preferences:
-- **Trackpad**: Tap-to-click, three-finger drag
+- **Trackpad**: Tap-to-click
 - **Screenshots**: Custom location (`~/Pictures/Screenshots`), PNG format, no shadow
 - **Menu bar**: Battery percentage, date/time format
 - **Mission Control**: Disable auto-rearrange, faster animations
