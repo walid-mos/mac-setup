@@ -69,6 +69,7 @@ OPTIONS:
   --skip-repos           Skip repository cloning (same as --skip clone-repos)
   --no-backup            Don't backup existing configurations
   --adopt                Adopt existing configs with stow instead of backing up
+  --no-force-stow        Disable force mode (keep existing backup/adopt logic)
 
 EXAMPLES:
   $0                              Run full installation
@@ -138,6 +139,10 @@ parse_arguments() {
         ;;
       --adopt)
         STOW_ADOPT=true
+        shift
+        ;;
+      --no-force-stow)
+        STOW_FORCE=false
         shift
         ;;
       *)

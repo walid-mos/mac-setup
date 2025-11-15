@@ -20,6 +20,7 @@ DOTFILES_BRANCH="${DOTFILES_BRANCH:-v3}"
 # -----------------------------------------------------------------------------
 STOW_ADOPT="${STOW_ADOPT:-false}"                   # Adopt existing configs or backup?
 STOW_VERBOSE="${STOW_VERBOSE:-false}"               # Detailed stow logs
+STOW_FORCE="${STOW_FORCE:-true}"                    # Force mode: unstow before stowing (ultimate priority)
 STOW_EXCLUDE_DIRS=("mac-setup" ".git" ".github" "README.md" "CLAUDE.md" ".DS_Store")
 
 # -----------------------------------------------------------------------------
@@ -157,7 +158,7 @@ fi
 
 # Export all variables for use in subshells
 export DOTFILES_REPO DOTFILES_DIR DOTFILES_BRANCH
-export STOW_ADOPT STOW_VERBOSE
+export STOW_ADOPT STOW_VERBOSE STOW_FORCE
 export BACKUP_DIR BACKUP_EXISTING_CONFIGS
 export LOG_FILE ENABLE_COLORS VERBOSE_MODE
 export HOMEBREW_INSTALL_URL HOMEBREW_PREFIX

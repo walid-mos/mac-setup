@@ -372,11 +372,14 @@ my-task = true
 ### Stow Module Details
 - **Dynamic package detection**: Scans `DOTFILES_DIR` for all directories
 - **Excludes**: `.git`, `mac-setup`, etc. (see `STOW_EXCLUDE_DIRS`)
-- **Conflict handling**: Three modes via flags:
-  - `--adopt`: Merge existing configs into dotfiles repo
-  - Default (`BACKUP_EXISTING_CONFIGS=true`): Backup conflicting files
-  - `--no-backup`: Fail on conflicts
-- **Process**: Clone repo → detect packages → stow each individually
+- **Conflict handling**: Force mode by default (ultimate priority)
+  - **Default (`STOW_FORCE=true`)**: Unstow existing symlinks, then stow (no conflicts, no errors)
+  - `--no-force-stow`: Disable force mode, use legacy conflict handling:
+    - `--adopt`: Merge existing configs into dotfiles repo
+    - `BACKUP_EXISTING_CONFIGS=true`: Backup conflicting files
+    - `--no-backup`: Fail on conflicts
+- **Process**: Clone repo → detect packages → unstow each (if force) → stow each individually
+- **Idempotent**: Can re-run setup.sh multiple times without errors
 - **Zsh plugin management**: Handled by Zinit in dotfiles (no OMZ dependency)
 
 ### Clone Repos Module Details
@@ -458,8 +461,9 @@ my-task = true
 ### Behavior Flags
 - `DRY_RUN`: Preview mode (no changes)
 - `VERBOSE_MODE`: Detailed output
-- `STOW_ADOPT`: Merge vs backup on conflicts
-- `BACKUP_EXISTING_CONFIGS`: Auto-backup conflicts
+- `STOW_FORCE`: Force mode - unstow before stowing (default: true, ultimate priority)
+- `STOW_ADOPT`: Merge vs backup on conflicts (only if STOW_FORCE=false)
+- `BACKUP_EXISTING_CONFIGS`: Auto-backup conflicts (only if STOW_FORCE=false)
 - `APPLY_MACOS_DEFAULTS`: Run macOS system preferences
 - `PROMPT_COMPUTER_NAME`: Prompt to configure computer name during setup (default: true)
 - `CLONE_PARALLEL_JOBS`: Number of parallel git clone jobs (default: 5)
@@ -478,9 +482,11 @@ Must run from `mac-setup/` directory. Script expects `./mac-setup.toml`.
 This is a bug - TOML parser init happens AFTER module 3. Never call `parse_toml_*` before `init_toml_parser` is run in `setup.sh:250`.
 
 ### Stow conflicts
-- Use `--adopt` to merge existing configs
-- Use `--no-backup` to see exact conflicts without auto-fixing
-- Conflicting files backed up to `$BACKUP_DIR` (timestamped)
+- **Default behavior (STOW_FORCE=true)**: No conflicts - existing symlinks are automatically removed and re-created
+- **To disable force mode**: Use `--no-force-stow` flag, then:
+  - Use `--adopt` to merge existing configs into dotfiles repo
+  - Use `--no-backup` to see exact conflicts without auto-fixing
+  - Conflicting files backed up to `$BACKUP_DIR` (timestamped) if `BACKUP_EXISTING_CONFIGS=true`
 
 ### Module execution order issues
 Modules MUST run in defined order due to dependencies. Never skip:

@@ -121,13 +121,83 @@ module_stow_dotfiles() {
       continue
     fi
 
-    # Check for conflicts first
+    # Force mode: unstow first, then stow (ultimate priority to STOW_DIRECTORY)
+    if [[ "$STOW_FORCE" == "true" ]]; then
+      log_verbose "Force mode: Removing existing symlinks for $package"
+      stow -D "$package" 2>/dev/null || true  # Ignore errors if not stowed
+
+      # Try to stow, capture output to detect conflicts
+      local stow_output
+      if [[ "$STOW_VERBOSE" == "true" ]]; then
+        stow_output=$(stow -v "$package" 2>&1)
+      else
+        stow_output=$(stow "$package" 2>&1)
+      fi
+      local stow_status=$?
+
+      # If stow failed, check if it's due to conflicts
+      if [[ $stow_status -ne 0 ]]; then
+        if echo "$stow_output" | grep -qE "existing target|not owned by stow|cannot stow"; then
+          log_verbose "Conflicts detected, removing existing files/symlinks"
+
+          # Extract conflicting paths from stow output (paths appear after "stow: ")
+          local conflicting_paths
+          conflicting_paths=$(echo "$stow_output" | \
+            sed -n 's/.*stow: //p' | \
+            sort -u)
+
+          # Remove each conflicting file/symlink/directory
+          while IFS= read -r path; do
+            [[ -z "$path" ]] && continue
+            local full_path="$HOME/$path"
+
+            if [[ -L "$full_path" ]]; then
+              log_verbose "Removing symlink: $path"
+              rm -f "$full_path"
+            elif [[ -f "$full_path" ]]; then
+              log_verbose "Removing file: $path"
+              rm -f "$full_path"
+            elif [[ -d "$full_path" ]]; then
+              log_verbose "Removing directory: $path"
+              rm -rf "$full_path"
+            fi
+          done <<< "$conflicting_paths"
+
+          # Retry stow after removing conflicts
+          if [[ "$STOW_VERBOSE" == "true" ]]; then
+            stow -v "$package" || {
+              log_error "Failed to stow after cleanup: $package"
+              ((failed++))
+              continue
+            }
+          else
+            stow "$package" 2>&1 | tee -a "$LOG_FILE" || {
+              log_error "Failed to stow after cleanup: $package"
+              ((failed++))
+              continue
+            }
+          fi
+        else
+          # Non-conflict error
+          log_error "Stow failed for: $package"
+          echo "$stow_output" | tee -a "$LOG_FILE"
+          ((failed++))
+          continue
+        fi
+      fi
+
+      log_success "Stowed (force): $package"
+      ((successful++))
+      continue
+    fi
+
+    # Non-force mode: legacy conflict detection and backup logic
     local stow_output
     stow_output=$(stow -n "$package" 2>&1)
     local stow_status=$?
 
     if [[ $stow_status -ne 0 ]]; then
-      if echo "$stow_output" | grep -q "existing target is"; then
+      if echo "$stow_output" | grep -qE "existing target|cannot stow"; then
         log_warning "Conflicts detected for package: $package"
 
         if [[ "$STOW_ADOPT" == "true" ]]; then
@@ -142,24 +212,29 @@ module_stow_dotfiles() {
         elif [[ "$BACKUP_EXISTING_CONFIGS" == "true" ]]; then
           log_info "Backing up conflicting files for: $package"
 
-          # Extract conflicting files from stow output
+          # Extract conflicting files from stow output (improved regex)
           local conflicting_files
-          conflicting_files=$(echo "$stow_output" | grep "existing target is" | awk '{print $NF}')
+          conflicting_files=$(echo "$stow_output" | \
+            grep -oE '(existing target [^ ]+|over existing target [^ ]+)' | \
+            awk '{print $NF}' | \
+            sed 's/\.$//')
 
-          log_info "Conflicting files detected:"
-          echo "$conflicting_files" | while IFS= read -r file; do
-            [[ -z "$file" ]] && continue
-            log_info "  - $file"
-          done
+          if [[ -n "$conflicting_files" ]]; then
+            log_info "Conflicting files detected:"
+            echo "$conflicting_files" | while IFS= read -r file; do
+              [[ -z "$file" ]] && continue
+              log_info "  - $file"
+            done
 
-          while IFS= read -r file; do
-            [[ -z "$file" ]] && continue
-            local full_path="$HOME/$file"
-            if [[ -e "$full_path" ]]; then
-              backup_path "$full_path"
-              rm -f "$full_path"
-            fi
-          done <<< "$conflicting_files"
+            while IFS= read -r file; do
+              [[ -z "$file" ]] && continue
+              local full_path="$HOME/$file"
+              if [[ -e "$full_path" ]]; then
+                backup_path "$full_path"
+                rm -rf "$full_path"  # Use -rf to handle both files and directories
+              fi
+            done <<< "$conflicting_files"
+          fi
 
           # Retry stow after backup
           if [[ "$STOW_VERBOSE" == "true" ]]; then
@@ -180,7 +255,7 @@ module_stow_dotfiles() {
           ((successful++))
         else
           log_error "Conflicts exist and backup/adopt disabled for: $package"
-          log_info "To resolve, set STOW_ADOPT=true or BACKUP_EXISTING_CONFIGS=true"
+          log_info "To resolve, set STOW_FORCE=true, STOW_ADOPT=true, or BACKUP_EXISTING_CONFIGS=true"
           ((failed++))
         fi
       else
