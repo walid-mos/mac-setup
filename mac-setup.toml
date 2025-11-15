@@ -167,19 +167,20 @@ github_orgs = [
 
 # GitLab groups to clone repos from (interactive selection with fzf)
 gitlab_groups = [
-  "igocreate"
+  "igocreate-hermes"
 ]
 
 # Mapping: organization/group → destination folder
 # Repos from these orgs will be cloned to ~/Development/<destination>/
 [repositories.destinations]
 NextNodeSolutions = "Nextnode"
-walid-mos = "SaaS"
-igocreate = "clients/igocreate"
+igocreate-hermes = "clients/igocreate-hermes"
 
 # Exceptions: specific repo → custom destination
 # Overrides the organization mapping for specific repos
 [repositories.repo_overrides]
+nextnode-front = "SaaS"
+yasmine = "SaaS"
 florist-bouquet-preview = "clients/fleurs-aujourdhui"
 # Add more exceptions as needed:
 # my-special-project = "clients/autre-client"

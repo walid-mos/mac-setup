@@ -111,6 +111,37 @@ select_destination_interactive() {
 }
 
 # -----------------------------------------------------------------------------
+# Setup job pool using FIFO semaphore (Bash 3.2 compatible)
+# -----------------------------------------------------------------------------
+setup_job_pool() {
+  local max_jobs="$1"
+  local fifo_path="/tmp/clone-limiter-$$"
+
+  # Create named pipe
+  mkfifo "$fifo_path"
+
+  # Open file descriptor 3 for read/write on the FIFO
+  exec 3<>"$fifo_path"
+
+  # Remove FIFO file (still accessible via FD 3)
+  rm "$fifo_path"
+
+  # Initialize semaphore with N tokens
+  local i
+  for i in $(seq 1 "$max_jobs"); do
+    echo >&3
+  done
+}
+
+# -----------------------------------------------------------------------------
+# Cleanup job pool
+# -----------------------------------------------------------------------------
+cleanup_job_pool() {
+  # Close file descriptor 3 if it's open
+  exec 3>&- 2>/dev/null || true
+}
+
+# -----------------------------------------------------------------------------
 # Clone a single repository (helper for parallel execution)
 # -----------------------------------------------------------------------------
 clone_single_repo() {
@@ -236,11 +267,17 @@ module_clone_repos() {
 
       # Check if authenticated
       if ! gh auth status &>/dev/null; then
+        if [[ "$DRY_RUN" == "true" ]]; then
+          log_warning "GitHub CLI not authenticated (skipping auth in dry-run mode)"
+          log_info "In real run, you would be prompted to authenticate with: gh auth login"
+          break
+        fi
+
         log_warning "GitHub CLI not authenticated"
 
         if ask_yes_no "Authenticate with GitHub now?" "y"; then
           log_info "Starting GitHub authentication..."
-          gh auth login < /dev/tty || {
+          gh auth login --hostname github.com --git-protocol https --web < /dev/tty || {
             log_error "GitHub authentication failed - skipping GitHub repositories"
             log_info "You can authenticate manually later with: gh auth login"
             break
@@ -378,35 +415,39 @@ module_clone_repos() {
             ((total_cloned++))
           done
         else
-          local running_jobs=0
+          # Setup job pool with FIFO semaphore
+          setup_job_pool "$CLONE_PARALLEL_JOBS"
+
+          # Track clone results
           local -a clone_pids=()
 
+          # Launch all clone jobs with semaphore control
           for repo_info in "${repos_to_clone[@]}"; do
             local repo_name clone_url dest
             repo_name=$(echo "$repo_info" | cut -d'|' -f1)
             clone_url=$(echo "$repo_info" | cut -d'|' -f2)
             dest=$(echo "$repo_info" | cut -d'|' -f3)
 
-            # Wait if we've reached max parallel jobs
-            while [[ $running_jobs -ge $CLONE_PARALLEL_JOBS ]]; do
-              wait -n  # Wait for any job to finish
-              ((running_jobs--))
-            done
-
-            # Launch clone in background
+            # Launch clone in background with semaphore
             (
+              read -u 3  # Acquire token (blocks if none available)
               clone_single_repo "$repo_name" "$clone_url" "$dest"
+              local result=$?
+              echo >&3  # Return token
+              exit $result
             ) &
             clone_pids+=($!)
-            ((running_jobs++))
           done
 
-          # Wait for all remaining jobs
+          # Wait for all background jobs and count successes
           for pid in "${clone_pids[@]}"; do
             if wait "$pid"; then
               ((total_cloned++))
             fi
           done
+
+          # Cleanup job pool
+          cleanup_job_pool
 
           echo ""
           log_success "Cloned $total_cloned repositories from $org"
@@ -433,11 +474,17 @@ module_clone_repos() {
 
       # Check if authenticated
       if ! glab auth status </dev/null &>/dev/null 2>&1; then
+        if [[ "$DRY_RUN" == "true" ]]; then
+          log_warning "GitLab CLI not authenticated (skipping auth in dry-run mode)"
+          log_info "In real run, you would be prompted to authenticate with: glab auth login"
+          break
+        fi
+
         log_warning "GitLab CLI not authenticated"
 
         if ask_yes_no "Authenticate with GitLab now?" "y"; then
           log_info "Starting GitLab authentication..."
-          glab auth login < /dev/tty || {
+          glab auth login --hostname gitlab.com --git-protocol https < /dev/tty || {
             log_error "GitLab authentication failed - skipping GitLab repositories"
             log_info "You can authenticate manually later with: glab auth login"
             break
@@ -555,34 +602,38 @@ module_clone_repos() {
             ((total_cloned++))
           done
         else
-          local running_jobs=0
+          # Setup job pool with FIFO semaphore
+          setup_job_pool "$CLONE_PARALLEL_JOBS"
+
+          # Track clone results
           local -a clone_pids=()
 
+          # Launch all clone jobs with semaphore control
           for repo_info in "${repos_to_clone[@]}"; do
             local repo_name dest
             repo_name=$(echo "$repo_info" | cut -d'|' -f1)
             dest=$(echo "$repo_info" | cut -d'|' -f2)
 
-            # Wait if we've reached max parallel jobs
-            while [[ $running_jobs -ge $CLONE_PARALLEL_JOBS ]]; do
-              wait -n  # Wait for any job to finish
-              ((running_jobs--))
-            done
-
-            # Launch clone in background
+            # Launch clone in background with semaphore
             (
+              read -u 3  # Acquire token (blocks if none available)
               clone_single_gitlab_repo "$repo_name" "$group" "$dest"
+              local result=$?
+              echo >&3  # Return token
+              exit $result
             ) &
             clone_pids+=($!)
-            ((running_jobs++))
           done
 
-          # Wait for all remaining jobs
+          # Wait for all background jobs and count successes
           for pid in "${clone_pids[@]}"; do
             if wait "$pid"; then
               ((total_cloned++))
             fi
           done
+
+          # Cleanup job pool
+          cleanup_job_pool
 
           echo ""
           log_success "Cloned $total_cloned repositories from $group"
