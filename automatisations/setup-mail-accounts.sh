@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # ============================================================================
-# Mail Accounts Configuration Automation
-# Interactive guided setup for email accounts with OAuth2 support
+# Mail Accounts Configuration Display
+# Shows email account configurations one by one (read-only)
 # ============================================================================
 
 set -euo pipefail
@@ -17,12 +17,6 @@ if [[ -f "$PROJECT_ROOT/lib/config.sh" ]]; then
   source "$PROJECT_ROOT/lib/helpers.sh"
   source "$PROJECT_ROOT/lib/toml-parser.sh"
 fi
-
-# ============================================================================
-# Configuration
-# ============================================================================
-MAIL_DB_PATH="$HOME/Library/Mail/V*/MailData/Accounts4.sqlite"
-TIMEOUT_PER_ACCOUNT=300  # 5 minutes max per account
 
 # ============================================================================
 # Provider Presets
@@ -50,179 +44,79 @@ get_provider_config() {
 }
 
 # ============================================================================
-# Account Verification
+# Gmail Account Display
 # ============================================================================
-verify_account_added() {
-  local email="$1"
-  local timeout="${2:-$TIMEOUT_PER_ACCOUNT}"
-
-  log_verbose "Verifying account was added: $email"
-
-  local elapsed=0
-  while true; do
-    # Check if account exists in database
-    if sqlite3 $MAIL_DB_PATH "SELECT ZUSERNAME FROM ZACCOUNT WHERE ZUSERNAME LIKE '%$email%'" 2>/dev/null | grep -q "$email"; then
-      log_success "Account verified: $email"
-      return 0
-    fi
-
-    # Check timeout
-    if [[ $elapsed -ge $timeout ]]; then
-      log_warning "Account verification timed out (not found in database)"
-      log_info "This may be normal - Mail.app might still be syncing"
-      return 1
-    fi
-
-    sleep 2
-    elapsed=$((elapsed + 2))
-  done
-}
-
-# ============================================================================
-# Gmail Account Setup (OAuth2)
-# ============================================================================
-setup_gmail_account() {
+display_gmail_account() {
   local email="$1"
   local display_name="$2"
 
   clear
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📧  Gmail Account Setup"
+  echo "📧  Configuration Gmail"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "  Email:         $email"
-  echo "  Display Name:  $display_name"
-  echo "  Provider:      Google (OAuth2 authentication required)"
+  echo "  Nom:           $display_name"
+  echo "  Type:          Gmail (OAuth2)"
   echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "🔧  Setup Instructions:"
-  echo ""
-  echo "  1. Mail.app will open automatically"
-  echo "  2. Go to: Mail > Settings... (⌘,)"
-  echo "  3. Click the 'Accounts' tab"
-  echo "  4. Click the '+' button at the bottom left"
-  echo "  5. Select 'Google' from the account type list"
-  echo "  6. Click 'Continue'"
-  echo "  7. Your browser will open → Sign in with your Google account"
-  echo "  8. Click 'Allow' to authorize Mail.app access"
-  echo "  9. Close the Settings window when complete"
+  echo "  ┌─ Configuration Serveur ────────────────────────────────────────┐"
+  echo "  │  IMAP:         imap.gmail.com"
+  echo "  │  Port IMAP:    993"
+  echo "  │  SMTP:         smtp.gmail.com"
+  echo "  │  Port SMTP:    587"
+  echo "  │  Auth:         OAuth2 (authentification navigateur requise)"
+  echo "  └────────────────────────────────────────────────────────────────┘"
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
   if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would setup Gmail account: $email"
-    return 0
+    log_info "[DRY RUN] Afficherait le compte Gmail: $email"
   fi
 
-  # Auto-copy email to clipboard
-  echo "$email" | pbcopy
-  echo "✅  Email address copied to clipboard (ready to paste if needed)"
-  echo ""
-
-  # Open Mail.app
-  log_step "Opening Mail.app..."
-  open -a Mail
-  sleep 2
-
-  # Wait for user confirmation
-  echo ""
-  read -p "Press ENTER when you've completed the setup..."
-
-  # Verify account was added (optional - may not appear immediately)
-  echo ""
-  log_step "Verifying account was added..."
-
-  if verify_account_added "$email" 30; then
-    echo ""
-    log_success "Gmail account successfully configured!"
-  else
-    echo ""
-    log_info "Account verification skipped (this is normal for OAuth accounts)"
-    log_info "Your account should appear in Mail.app shortly"
-  fi
-
-  sleep 2
   return 0
 }
 
 # ============================================================================
-# Microsoft Account Setup (OAuth2)
+# Microsoft Account Display
 # ============================================================================
-setup_microsoft_account() {
+display_microsoft_account() {
   local email="$1"
   local display_name="$2"
 
   clear
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📧  Microsoft/Outlook Account Setup"
+  echo "📧  Configuration Microsoft/Outlook"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "  Email:         $email"
-  echo "  Display Name:  $display_name"
-  echo "  Provider:      Microsoft (OAuth2 authentication required)"
+  echo "  Nom:           $display_name"
+  echo "  Type:          Microsoft (OAuth2)"
   echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "🔧  Setup Instructions:"
-  echo ""
-  echo "  1. Mail.app will open automatically"
-  echo "  2. Go to: Mail > Settings... (⌘,)"
-  echo "  3. Click the 'Accounts' tab"
-  echo "  4. Click the '+' button at the bottom left"
-  echo "  5. Select 'Microsoft Exchange' or 'Outlook.com'"
-  echo "  6. Enter your email address when prompted"
-  echo "  7. Click 'Sign In'"
-  echo "  8. Your browser will open → Sign in with Microsoft"
-  echo "  9. Click 'Accept' to authorize Mail.app access"
-  echo "  10. Close the Settings window when complete"
+  echo "  ┌─ Configuration Serveur ────────────────────────────────────────┐"
+  echo "  │  IMAP:         outlook.office365.com"
+  echo "  │  Port IMAP:    993"
+  echo "  │  SMTP:         smtp.office365.com"
+  echo "  │  Port SMTP:    587"
+  echo "  │  Auth:         OAuth2 (authentification navigateur requise)"
+  echo "  └────────────────────────────────────────────────────────────────┘"
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
   if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would setup Microsoft account: $email"
-    return 0
+    log_info "[DRY RUN] Afficherait le compte Microsoft: $email"
   fi
 
-  # Auto-copy email to clipboard
-  echo "$email" | pbcopy
-  echo "✅  Email address copied to clipboard (ready to paste)"
-  echo ""
-
-  # Open Mail.app
-  log_step "Opening Mail.app..."
-  open -a Mail
-  sleep 2
-
-  # Wait for user confirmation
-  echo ""
-  read -p "Press ENTER when you've completed the setup..."
-
-  # Verify account was added
-  echo ""
-  log_step "Verifying account was added..."
-
-  if verify_account_added "$email" 30; then
-    echo ""
-    log_success "Microsoft account successfully configured!"
-  else
-    echo ""
-    log_info "Account verification skipped (this is normal for OAuth accounts)"
-    log_info "Your account should appear in Mail.app shortly"
-  fi
-
-  sleep 2
   return 0
 }
 
 # ============================================================================
-# IMAP Account Setup (Traditional Password Auth)
+# IMAP Account Display
 # ============================================================================
-setup_imap_account() {
+display_imap_account() {
   local email="$1"
   local display_name="$2"
   local imap_server="$3"
@@ -233,113 +127,34 @@ setup_imap_account() {
   clear
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📧  IMAP Account Setup"
+  echo "📧  Configuration IMAP"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  echo "📋  Account Details (ready to copy-paste):"
+  echo "  Email:         $email"
+  echo "  Nom:           $display_name"
+  echo "  Type:          IMAP (Mot de passe)"
   echo ""
-  echo "  Email:            $email"
-  echo "  Display Name:     $display_name"
-  echo "  Account Type:     IMAP"
-  echo ""
-  echo "  ┌─ Incoming Mail Server (IMAP) ─────────────────────────────────┐"
-  echo "  │  Server:   $imap_server"
-  echo "  │  Port:     $imap_port"
-  echo "  │  Username: $email"
-  echo "  │  SSL:      Yes (required)"
+  echo "  ┌─ Serveur Entrant (IMAP) ──────────────────────────────────────┐"
+  echo "  │  Serveur:      $imap_server"
+  echo "  │  Port:         $imap_port"
+  echo "  │  Utilisateur:  $email"
+  echo "  │  SSL:          Oui (requis)"
   echo "  └────────────────────────────────────────────────────────────────┘"
   echo ""
-  echo "  ┌─ Outgoing Mail Server (SMTP) ─────────────────────────────────┐"
-  echo "  │  Server:   $smtp_server"
-  echo "  │  Port:     $smtp_port"
-  echo "  │  Username: $email"
-  echo "  │  SSL:      Yes (STARTTLS)"
+  echo "  ┌─ Serveur Sortant (SMTP) ──────────────────────────────────────┐"
+  echo "  │  Serveur:      $smtp_server"
+  echo "  │  Port:         $smtp_port"
+  echo "  │  Utilisateur:  $email"
+  echo "  │  SSL:          Oui (STARTTLS)"
   echo "  └────────────────────────────────────────────────────────────────┘"
-  echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
-  echo "🔧  Setup Instructions:"
-  echo ""
-  echo "  1. Mail.app will open automatically"
-  echo "  2. Go to: Mail > Settings... (⌘,)"
-  echo "  3. Click the 'Accounts' tab"
-  echo "  4. Click '+' → Select 'Add Other Mail Account...'"
-  echo "  5. Enter Name and Email (details above)"
-  echo "  6. Click 'Sign In'"
-  echo "  7. Enter your password when prompted"
-  echo "  8. Mail.app will try to auto-detect settings"
-  echo "  9. Verify IMAP/SMTP details match the values above"
-  echo "  10. If auto-detect fails, enter server details manually"
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
   if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would setup IMAP account: $email"
-    return 0
+    log_info "[DRY RUN] Afficherait le compte IMAP: $email"
   fi
 
-  # Create temp file with all details for easy reference
-  local temp_file="/tmp/mail_account_${email}.txt"
-  cat > "$temp_file" <<EOF
-Email Account Configuration
-===========================
-
-Email: $email
-Display Name: $display_name
-Account Type: IMAP
-
-Incoming Mail Server (IMAP)
----------------------------
-Server: $imap_server
-Port: $imap_port
-Username: $email
-SSL: Yes (required)
-
-Outgoing Mail Server (SMTP)
----------------------------
-Server: $smtp_server
-Port: $smtp_port
-Username: $email
-SSL: Yes (STARTTLS)
-
-Password: [Enter your password when Mail.app prompts]
-EOF
-
-  echo "📄  Full details saved to: $temp_file"
-  echo "    (You can reference this file if needed during setup)"
-  echo ""
-
-  # Copy email to clipboard
-  echo "$email" | pbcopy
-  echo "✅  Email address copied to clipboard"
-  echo ""
-
-  # Open Mail.app
-  log_step "Opening Mail.app..."
-  open -a Mail
-  sleep 2
-
-  # Wait for user confirmation
-  echo ""
-  read -p "Press ENTER when you've completed the setup..."
-
-  # Verify account was added
-  echo ""
-  log_step "Verifying account was added..."
-
-  if verify_account_added "$email" 60; then
-    echo ""
-    log_success "IMAP account successfully configured!"
-  else
-    echo ""
-    log_warning "Could not verify account in database"
-    log_info "Please check Mail.app to ensure account was added correctly"
-  fi
-
-  # Clean up temp file
-  rm -f "$temp_file"
-  sleep 2
   return 0
 }
 
@@ -347,7 +162,7 @@ EOF
 # Main Automation Function
 # ============================================================================
 automation_setup_mail_accounts() {
-  log_section "Mail Account Guided Setup"
+  log_section "Affichage des configurations mail"
 
   # ----------------------------------
   # Step 1: Check if enabled
@@ -356,15 +171,15 @@ automation_setup_mail_accounts() {
   enabled=$(parse_toml_value "$TOML_CONFIG" "mail.enabled" | sed "s/^'//;s/'$//")
 
   if [[ "$enabled" != "true" ]]; then
-    log_info "Mail automation is disabled in config (mail.enabled = false)"
-    log_info "Skipping mail account setup..."
+    log_info "L'automatisation mail est désactivée (mail.enabled = false)"
+    log_info "Passage de la configuration des comptes mail..."
     return 0
   fi
 
   # ----------------------------------
   # Step 2: Count accounts
   # ----------------------------------
-  log_step "Checking mail accounts configuration..."
+  log_step "Vérification de la configuration des comptes mail..."
 
   local account_count=0
   while true; do
@@ -375,45 +190,40 @@ automation_setup_mail_accounts() {
   done
 
   if [[ $account_count -eq 0 ]]; then
-    log_warning "No mail accounts configured in mac-setup.toml"
-    log_info "Add accounts in the [mail.accounts] section to use this automation"
+    log_warning "Aucun compte mail configuré dans mac-setup.toml"
+    log_info "Ajoutez des comptes dans la section [mail.accounts] pour utiliser cette automatisation"
     return 0
   fi
 
-  log_info "Found $account_count mail account(s) to configure"
+  log_info "Trouvé $account_count compte(s) mail à afficher"
 
   # ----------------------------------
   # Step 3: Introduction
   # ----------------------------------
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📧  Mail Account Setup - Interactive Mode"
+  echo "📧  Affichage des configurations de comptes mail"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
-  echo "This script will guide you through setting up each email account"
-  echo "with clear step-by-step instructions and automatic verification."
+  echo "Ce script affiche les détails de configuration de chaque compte"
+  echo "email pour que vous puissiez les configurer manuellement."
   echo ""
-  echo "✨  Features:"
-  echo "    • Provider-specific setup flows (Gmail, Microsoft, IMAP)"
-  echo "    • OAuth2 authentication for Gmail and Microsoft"
-  echo "    • Auto-copy credentials to clipboard"
-  echo "    • Automatic account verification"
-  echo ""
-  echo "⏱️   Estimated time: $((account_count * 2)) - $((account_count * 3)) minutes"
+  echo "📋  Informations affichées:"
+  echo "    • Adresse email et nom d'affichage"
+  echo "    • Type de compte (Gmail, Microsoft, IMAP)"
+  echo "    • Serveurs IMAP et SMTP avec ports"
+  echo "    • Méthode d'authentification"
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
   if [[ "$DRY_RUN" != "true" ]]; then
-    read -p "Press ENTER to start, or Ctrl+C to cancel..."
+    read -p "Appuyez sur ENTRÉE pour commencer..."
   fi
 
   # ----------------------------------
-  # Step 4: Process each account
+  # Step 4: Display each account
   # ----------------------------------
-  local success_count=0
-  local failed_count=0
-
   for ((i=0; i<account_count; i++)); do
     local account_type email display_name account_name
 
@@ -425,33 +235,24 @@ automation_setup_mail_accounts() {
 
     # Validate required fields
     if [[ -z "$email" || -z "$display_name" || -z "$account_type" ]]; then
-      log_error "Account #$((i + 1)) ($account_name): Missing required fields"
-      failed_count=$((failed_count + 1))
+      log_error "Compte #$((i + 1)) ($account_name): Champs requis manquants"
       continue
     fi
 
     # Show progress
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "Account $((i + 1)) of $account_count"
+    echo "Compte $((i + 1)) sur $account_count"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-    # Route to appropriate setup function
+    # Route to appropriate display function
     case "$account_type" in
       Gmail)
-        if setup_gmail_account "$email" "$display_name"; then
-          success_count=$((success_count + 1))
-        else
-          failed_count=$((failed_count + 1))
-        fi
+        display_gmail_account "$email" "$display_name"
         ;;
 
       Microsoft|Outlook)
-        if setup_microsoft_account "$email" "$display_name"; then
-          success_count=$((success_count + 1))
-        else
-          failed_count=$((failed_count + 1))
-        fi
+        display_microsoft_account "$email" "$display_name"
         ;;
 
       IMAP|iCloud|Yahoo|*)
@@ -475,19 +276,25 @@ automation_setup_mail_accounts() {
 
           # Validate
           if [[ -z "$imap_server" || -z "$smtp_server" ]]; then
-            log_error "Account #$((i + 1)): Missing IMAP/SMTP server settings"
-            failed_count=$((failed_count + 1))
+            log_error "Compte #$((i + 1)): Configuration IMAP/SMTP manquante"
             continue
           fi
         fi
 
-        if setup_imap_account "$email" "$display_name" "$imap_server" "$imap_port" "$smtp_server" "$smtp_port"; then
-          success_count=$((success_count + 1))
-        else
-          failed_count=$((failed_count + 1))
-        fi
+        display_imap_account "$email" "$display_name" "$imap_server" "$imap_port" "$smtp_server" "$smtp_port"
         ;;
     esac
+
+    # Ask to continue to next account (skip for last account)
+    if [[ $i -lt $((account_count - 1)) ]]; then
+      echo ""
+      read -p "Continuer au suivant? [Y/n] " -n 1 -r
+      echo ""
+      if [[ $REPLY =~ ^[Nn]$ ]]; then
+        log_info "Arrêt demandé par l'utilisateur"
+        break
+      fi
+    fi
   done
 
   # ----------------------------------
@@ -496,37 +303,24 @@ automation_setup_mail_accounts() {
   clear
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "📧  Mail Account Setup - Complete"
+  echo "📧  Affichage des comptes mail - Terminé"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
   if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would configure $account_count account(s)"
+    log_info "[DRY RUN] Afficherait $account_count compte(s)"
   else
-    log_success "Successfully configured: $success_count account(s)"
-
-    if [[ $failed_count -gt 0 ]]; then
-      log_error "Failed to configure: $failed_count account(s)"
-    fi
-
+    log_success "Configurations affichées: $account_count compte(s)"
     echo ""
-    echo "✅  All mail accounts are now configured!"
+    echo "📋  Vous pouvez maintenant configurer ces comptes manuellement"
+    echo "    dans Mail.app (Mail > Réglages > Comptes)."
     echo ""
-    echo "📬  You can start using Mail.app with all your accounts."
-    echo ""
-
-    if [[ $failed_count -gt 0 ]]; then
-      echo "⚠️   Some accounts failed to configure."
-      echo "    Please check the error messages above and try adding them manually."
-      echo ""
-    fi
   fi
 
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
 
-  # Return success only if all accounts configured successfully
-  return $([ $failed_count -eq 0 ] && echo 0 || echo 1)
+  return 0
 }
 
 # ============================================================================
