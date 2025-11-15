@@ -106,7 +106,7 @@ log_progress() {
 }
 
 log_question() {
-  print_message "$COLOR_MAGENTA" "$SYMBOL_QUESTION" "QUESTION" "$@"
+  print_message "$COLOR_MAGENTA" "$SYMBOL_QUESTION" "QUESTION" "$@" >&2
 }
 
 # -----------------------------------------------------------------------------
@@ -224,9 +224,15 @@ log_git_error() {
   local repo_url="$1"
   local exit_code="$2"
   local stderr_content="$3"
+  local expected_path="$4"
 
   # Log basic error info
   log_error "Failed to clone repository: $repo_url"
+
+  # Check if destination path verification failed
+  if [[ -n "$expected_path" ]] && [[ ! -d "$expected_path/.git" ]]; then
+    log_error "Repository not found at expected location: $expected_path"
+  fi
 
   # Decode exit code
   local exit_description

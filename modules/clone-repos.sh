@@ -84,24 +84,26 @@ select_destination_interactive() {
   # Add custom option
   destinations+=("[Nouveau dossier...]")
 
-  echo ""
+  echo "" >&2
   log_question "Aucun mapping trouvé pour '$repo_name'. Où cloner ce repo ?"
-  echo ""
+  echo "" >&2
 
-  # Use fzf for selection
+  # Use fzf for selection (use /dev/tty for interactive display)
   local selected
   selected=$(printf '%s\n' "${destinations[@]}" | fzf \
     --height=40% \
     --border \
     --header="Sélectionner la destination pour $repo_name" \
-    --prompt="Destination> ")
+    --prompt="Destination> " \
+    </dev/tty 2>/dev/tty)
 
   if [[ -z "$selected" ]]; then
     return 1
   fi
 
   if [[ "$selected" == "[Nouveau dossier...]" ]]; then
-    read -r -p "Entrer le chemin (relatif à ~/Development/): " custom_dest
+    echo -n "Entrer le chemin (relatif à ~/Development/): " >&2
+    read -r custom_dest </dev/tty
     echo "$custom_dest"
   else
     echo "$selected"
@@ -164,6 +166,13 @@ clone_single_repo() {
   local exit_code=$?
 
   if [[ $exit_code -eq 0 ]]; then
+    # Verify the repository was actually cloned to the correct location
+    if [[ ! -d "$repo_path/.git" ]]; then
+      echo "✗ $repo_name (cloned to wrong location)" >&2
+      log_error "Repository cloned but not found at expected path: $repo_path"
+      return 1
+    fi
+
     echo "✓ $repo_name"
     if [[ "$VERBOSE_MODE" == "true" ]]; then
       log_verbose "Cloned: $repo_name"
@@ -172,7 +181,7 @@ clone_single_repo() {
   else
     echo "✗ $repo_name" >&2
     # Log detailed error to log file (always logged, regardless of verbose mode)
-    log_git_error "$clone_url" "$exit_code" "$stderr_output"
+    log_git_error "$clone_url" "$exit_code" "$stderr_output" "$repo_path"
     if [[ "$VERBOSE_MODE" == "true" ]]; then
       # In verbose mode, also show error summary on console
       echo "  → Error: Exit code $exit_code" >&2
@@ -196,15 +205,32 @@ clone_single_gitlab_repo() {
     return 0
   fi
 
+  # Get HTTPS clone URL from GitLab API (similar to GitHub implementation)
+  local clone_url
+  clone_url=$(glab api "/projects/$(echo "$full_path" | sed 's/\//%2F/g')" --jq '.http_url_to_repo' 2>/dev/null)
+
+  if [[ -z "$clone_url" ]]; then
+    echo "✗ $repo_name (failed to get clone URL)" >&2
+    log_error "Failed to retrieve HTTPS clone URL for: $full_path"
+    return 1
+  fi
+
   # Ensure destination directory exists
   mkdir -p "$DEV_ROOT/$dest" 2>/dev/null
 
   # Capture stderr for error logging
   local stderr_output
-  stderr_output=$(run_with_timeout "$GIT_CLONE_TIMEOUT" glab repo clone "$full_path" "$repo_path" 2>&1)
+  stderr_output=$(run_with_timeout "$GIT_CLONE_TIMEOUT" git clone "$clone_url" "$repo_path" 2>&1)
   local exit_code=$?
 
   if [[ $exit_code -eq 0 ]]; then
+    # Verify the repository was actually cloned to the correct location
+    if [[ ! -d "$repo_path/.git" ]]; then
+      echo "✗ $repo_name (cloned to wrong location)" >&2
+      log_error "Repository cloned but not found at expected path: $repo_path"
+      return 1
+    fi
+
     echo "✓ $repo_name"
     if [[ "$VERBOSE_MODE" == "true" ]]; then
       log_verbose "Cloned: $repo_name (GitLab)"
@@ -213,7 +239,7 @@ clone_single_gitlab_repo() {
   else
     echo "✗ $repo_name" >&2
     # Log detailed error to log file (always logged, regardless of verbose mode)
-    log_git_error "$full_path" "$exit_code" "$stderr_output"
+    log_git_error "$clone_url" "$exit_code" "$stderr_output" "$repo_path"
     if [[ "$VERBOSE_MODE" == "true" ]]; then
       # In verbose mode, also show error summary on console
       echo "  → Error: Exit code $exit_code" >&2
@@ -248,7 +274,8 @@ module_clone_repos() {
   local gitlab_groups
   gitlab_groups=$(parse_toml_array "$TOML_CONFIG" "repositories.gitlab_groups" 2>/dev/null)
 
-  local total_cloned=0
+  local github_cloned=0
+  local gitlab_cloned=0
 
   # Process GitHub organizations
   if [[ -n "$github_orgs" ]]; then
@@ -412,7 +439,7 @@ module_clone_repos() {
             repo_name=$(echo "$repo_info" | cut -d'|' -f1)
             dest=$(echo "$repo_info" | cut -d'|' -f3)
             log_dry_run "Would clone: $org/$repo_name -> $DEV_ROOT/$dest/$repo_name"
-            ((total_cloned++))
+            ((github_cloned++))
           done
         else
           # Setup job pool with FIFO semaphore
@@ -442,7 +469,7 @@ module_clone_repos() {
           # Wait for all background jobs and count successes
           for pid in "${clone_pids[@]}"; do
             if wait "$pid"; then
-              ((total_cloned++))
+              ((github_cloned++))
             fi
           done
 
@@ -450,7 +477,7 @@ module_clone_repos() {
           cleanup_job_pool
 
           echo ""
-          log_success "Cloned $total_cloned repositories from $org"
+          log_success "Cloned $github_cloned repositories from $org"
         fi
       fi
 
@@ -599,7 +626,7 @@ module_clone_repos() {
             repo_name=$(echo "$repo_info" | cut -d'|' -f1)
             dest=$(echo "$repo_info" | cut -d'|' -f2)
             log_dry_run "Would clone: $group/$repo_name -> $DEV_ROOT/$dest/$repo_name"
-            ((total_cloned++))
+            ((gitlab_cloned++))
           done
         else
           # Setup job pool with FIFO semaphore
@@ -628,7 +655,7 @@ module_clone_repos() {
           # Wait for all background jobs and count successes
           for pid in "${clone_pids[@]}"; do
             if wait "$pid"; then
-              ((total_cloned++))
+              ((gitlab_cloned++))
             fi
           done
 
@@ -636,7 +663,7 @@ module_clone_repos() {
           cleanup_job_pool
 
           echo ""
-          log_success "Cloned $total_cloned repositories from $group"
+          log_success "Cloned $gitlab_cloned repositories from $group"
         fi
       fi
 
@@ -645,10 +672,11 @@ module_clone_repos() {
 
   # Summary
   echo ""
+  local total_cloned=$((github_cloned + gitlab_cloned))
   if [[ $total_cloned -eq 0 ]]; then
     log_info "No repositories were cloned"
   else
-    log_success "Successfully cloned $total_cloned repositories"
+    log_success "Successfully cloned $total_cloned repositories total (GitHub: $github_cloned, GitLab: $gitlab_cloned)"
   fi
 
   return 0

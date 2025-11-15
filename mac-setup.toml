@@ -174,7 +174,7 @@ gitlab_groups = [
 # Repos from these orgs will be cloned to ~/Development/<destination>/
 [repositories.destinations]
 NextNodeSolutions = "Nextnode"
-igocreate-hermes = "clients/igocreate-hermes"
+igocreate-hermes = "clients/igocreate"
 
 # Exceptions: specific repo → custom destination
 # Overrides the organization mapping for specific repos
