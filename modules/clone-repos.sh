@@ -257,6 +257,19 @@ module_clone_repos() {
   # Verify prerequisites
   require_tool jq "jq not found. Please run script-dependencies module first"
 
+  # Ensure we're in the correct working directory (defensive check)
+  # The clone operations assume we're starting from a known location
+  local current_dir
+  current_dir="$(pwd)"
+  if [[ "$current_dir" != "$DEV_ROOT" && "$current_dir" != */mac-setup ]]; then
+    log_warning "Working directory is: $current_dir"
+    log_info "Changing to expected location: $DEV_ROOT"
+    cd "$DEV_ROOT" || {
+      log_error "Failed to change to DEV_ROOT: $DEV_ROOT"
+      return 1
+    }
+  fi
+
   # Check if fzf is installed
   if ! command_exists fzf; then
     log_warning "fzf not found - installing via Homebrew..."
@@ -527,14 +540,32 @@ module_clone_repos() {
       log_verbose "Configuring glab to use HTTPS protocol"
       glab config set -h gitlab.com git_protocol https &>/dev/null || log_verbose "Could not set glab git_protocol (already set or permission issue)"
 
-      # Fetch repositories
+      # Fetch repositories using GitLab API (glab repo list --group is broken)
       log_info "Fetching repositories from $group..."
 
-      local repos
-      repos=$(glab repo list --group "$group" --per-page 100 2>/dev/null)
+      local repos_json
+      repos_json=$(glab api "groups/$group/projects?include_subgroups=true&per_page=100" 2>&1)
+      local api_status=$?
 
-      if [[ -z "$repos" ]]; then
-        log_warning "No repositories found for group: $group"
+      # Handle API errors
+      if [[ $api_status -ne 0 ]]; then
+        if echo "$repos_json" | grep -q "404"; then
+          log_error "GitLab group not found: $group"
+          log_info "Tip: Check the group path in GitLab. Use 'glab api groups' to list accessible groups."
+        elif echo "$repos_json" | grep -q "401"; then
+          log_error "Not authenticated to access group: $group"
+          log_info "Run: glab auth login"
+        else
+          log_error "Failed to fetch repositories from $group"
+          log_verbose "API error: $repos_json"
+        fi
+        continue
+      fi
+
+      # Check if group has no repositories
+      if [[ -z "$repos_json" ]] || [[ "$repos_json" == "[]" ]]; then
+        log_warning "No repositories found in group: $group"
+        log_info "The group exists but contains no projects you can access"
         continue
       fi
 
@@ -542,12 +573,9 @@ module_clone_repos() {
       local -a repo_list_lines=()
       local repo_names=()
 
-      while IFS= read -r repo_line; do
-        [[ -z "$repo_line" ]] && continue
-        [[ "$repo_line" =~ ^GROUP ]] && continue  # Skip header
-
-        local repo_name
-        repo_name=$(echo "$repo_line" | awk '{print $1}')
+      # Extract repository information from JSON using jq
+      while IFS= read -r repo_name; do
+        [[ -z "$repo_name" ]] && continue
 
         # Get destination
         local dest
@@ -559,7 +587,7 @@ module_clone_repos() {
 
         repo_names+=("$repo_name|$dest")
         repo_list_lines+=("$(printf "%s|%s" "$repo_name" "$dest")")
-      done < <(echo "$repos" | tail -n +2)
+      done < <(echo "$repos_json" | jq -r '.[] | .name')
 
       if [[ ${#repo_list_lines[@]} -eq 0 ]]; then
         continue
