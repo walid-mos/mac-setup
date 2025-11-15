@@ -80,6 +80,52 @@ module_git_config() {
     log_success "HTTPS protocol configured for GitHub and GitLab"
   fi
 
+  # Configure credential helpers for GitHub and GitLab
+  log_subsection "Configuring Git Credential Helpers"
+
+  # Configure GitHub credential helper (gh)
+  if command_exists gh && gh auth status &>/dev/null; then
+    log_info "Configuring GitHub CLI as credential helper"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+      log_dry_run "Would run: gh auth setup-git"
+    else
+      gh auth setup-git &>/dev/null || {
+        log_verbose "GitHub credential helper may already be configured"
+      }
+      log_success "GitHub credential helper configured"
+    fi
+  else
+    log_verbose "GitHub CLI not authenticated - skipping credential helper setup"
+  fi
+
+  # Configure GitLab credential helper (glab)
+  # NOTE: glab auth login SHOULD do this automatically, but there's a known bug (Issue #707)
+  # where it doesn't always work. We explicitly configure it here to ensure HTTPS cloning works.
+  if command_exists glab && glab auth status &>/dev/null 2>&1; then
+    log_info "Configuring GitLab CLI as credential helper"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+      log_dry_run "Would set: git config --global credential.\"https://gitlab.com\".helper \"\""
+      log_dry_run "Would set: git config --global --add credential.\"https://gitlab.com\".helper '!/path/to/glab auth git-credential'"
+    else
+      # Get the actual path to glab
+      local glab_path
+      glab_path=$(command -v glab)
+
+      # Configure credential helper (use --replace-all to handle existing entries)
+      git config --global --replace-all credential."https://gitlab.com".helper "!${glab_path} auth git-credential" || {
+        # If --replace-all fails (no existing entry), try --add
+        git config --global --add credential."https://gitlab.com".helper "!${glab_path} auth git-credential" || {
+          log_warning "Failed to configure GitLab credential helper"
+        }
+      }
+      log_success "GitLab credential helper configured"
+    fi
+  else
+    log_verbose "GitLab CLI not authenticated - skipping credential helper setup"
+  fi
+
   # Display current git config
   log_subsection "Current Git Configuration"
 

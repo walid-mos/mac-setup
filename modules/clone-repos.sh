@@ -84,9 +84,13 @@ select_destination_interactive() {
   # Add custom option
   destinations+=("[Nouveau dossier...]")
 
-  echo "" >&2
-  log_question "Aucun mapping trouvé pour '$repo_name'. Où cloner ce repo ?"
-  echo "" >&2
+  {
+    echo ""
+    log_question "Aucun mapping trouvé pour '$repo_name'. Où cloner ce repo ?"
+    echo ""
+    # Force flush by calling external command
+    /bin/cat </dev/null
+  } >&2
 
   # Use fzf for selection
   local selected
@@ -94,7 +98,8 @@ select_destination_interactive() {
     --height=40% \
     --border \
     --header="Sélectionner la destination pour $repo_name" \
-    --prompt="Destination> ")
+    --prompt="Destination> " \
+    < /dev/tty > /dev/tty 2>&1)
 
   if [[ -z "$selected" ]]; then
     return 1
@@ -382,8 +387,12 @@ module_clone_repos() {
       fi
 
       # Interactive selection with fzf
-      log_info "Select repositories to clone (Tab=select, Enter=confirm):"
-      echo ""
+      {
+        log_info "Select repositories to clone (Tab=select, Enter=confirm):"
+        echo ""
+        # Force flush by calling external command
+        /bin/cat </dev/null
+      } >&2
 
       local selected_repos
       selected_repos=$(printf '%s\n' "${repo_list_lines[@]}" | fzf --multi \
@@ -395,7 +404,8 @@ module_clone_repos() {
         --header="Select repos to clone from $org (Tab=multi-select, Enter=confirm)" \
         --preview="echo {3}" \
         --preview-window=up:3:wrap \
-        --preview-label="Description")
+        --preview-label="Description" \
+        < /dev/tty > /dev/tty 2>&1)
 
       if [[ -z "$selected_repos" ]]; then
         log_info "No repositories selected for $org"
@@ -445,7 +455,7 @@ module_clone_repos() {
       # Phase 2: Clone repositories in parallel
       if [[ ${#repos_to_clone[@]} -gt 0 ]]; then
         log_info "Cloning ${#repos_to_clone[@]} repositories (max ${CLONE_PARALLEL_JOBS} parallel jobs)..."
-        echo ""
+        echo "" >&2
 
         if [[ "$DRY_RUN" == "true" ]]; then
           for repo_info in "${repos_to_clone[@]}"; do
@@ -490,7 +500,7 @@ module_clone_repos() {
           # Cleanup job pool
           cleanup_job_pool
 
-          echo ""
+          echo "" >&2
           log_success "Cloned $github_cloned repositories from $org"
         fi
       fi
@@ -599,8 +609,12 @@ module_clone_repos() {
       fi
 
       # Interactive selection
-      log_info "Select repositories to clone (Tab=select, Enter=confirm):"
-      echo ""
+      {
+        log_info "Select repositories to clone (Tab=select, Enter=confirm):"
+        echo ""
+        # Force flush by calling external command
+        /bin/cat </dev/null
+      } >&2
 
       local selected_repos
       selected_repos=$(printf '%s\n' "${repo_list_lines[@]}" | fzf --multi \
@@ -609,7 +623,8 @@ module_clone_repos() {
         --delimiter='|' \
         --with-nth=1,2 \
         --nth=1 \
-        --header="Select repos to clone from $group (Tab=multi-select, Enter=confirm)")
+        --header="Select repos to clone from $group (Tab=multi-select, Enter=confirm)" \
+        < /dev/tty > /dev/tty 2>&1)
 
       if [[ -z "$selected_repos" ]]; then
         log_info "No repositories selected for $group"
@@ -652,7 +667,7 @@ module_clone_repos() {
       # Phase 2: Clone repositories in parallel
       if [[ ${#repos_to_clone[@]} -gt 0 ]]; then
         log_info "Cloning ${#repos_to_clone[@]} repositories (max ${CLONE_PARALLEL_JOBS} parallel jobs)..."
-        echo ""
+        echo "" >&2
 
         if [[ "$DRY_RUN" == "true" ]]; then
           for repo_info in "${repos_to_clone[@]}"; do
@@ -698,7 +713,7 @@ module_clone_repos() {
           # Cleanup job pool
           cleanup_job_pool
 
-          echo ""
+          echo "" >&2
           log_success "Cloned $gitlab_cloned repositories from $group"
         fi
       fi
@@ -707,7 +722,7 @@ module_clone_repos() {
   fi
 
   # Summary
-  echo ""
+  echo "" >&2
   local total_cloned=$((github_cloned + gitlab_cloned))
   if [[ $total_cloned -eq 0 ]]; then
     log_info "No repositories were cloned"
