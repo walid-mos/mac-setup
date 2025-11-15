@@ -223,3 +223,56 @@ wait_timeout = 60
 
 # Partages sélectionnés (modifiable)
 shares = ["Storage", "photo", "Exchange", "Medias"]
+
+# -----------------------------------------------------------------------------
+# Mail Account Configuration
+# -----------------------------------------------------------------------------
+# Email accounts will be pre-configured via mobileconfig profiles
+# Profiles are generated and saved to ~/Desktop/mail-profiles/
+# User must install them via System Settings > Profiles
+[mail]
+enabled = true
+
+# Account configurations
+# Supported types: "Gmail", "Microsoft", "iCloud", "IMAP"
+
+# Gmail Pro
+[[mail.accounts]]
+name = "Gmail Pro"
+email = "pro.walid.mostefaoui@gmail.com"
+display_name = "Walid Mostefaoui"
+type = "Gmail"  # Auto-configured with Gmail defaults
+
+# Gmail Old (moins important)
+[[mail.accounts]]
+name = "Gmail Old"
+email = "w.mostefaoui@gmail.com"
+display_name = "Walid Mostefaoui"
+type = "Gmail"  # Auto-configured with Gmail defaults
+
+# Nextnode (IMAP)
+[[mail.accounts]]
+name = "Nextnode"
+email = "walidmostefaoui@nextnode.fr"
+display_name = "Walid Mostefaoui"
+type = "IMAP"
+imap_server = "mail.infomaniak.com"
+imap_port = 993
+imap_username = "walidmostefaoui@nextnode.fr"
+smtp_server = "mail.infomaniak.com"
+smtp_port = 587
+smtp_username = "walidmostefaoui@nextnode.fr"
+
+# Outlook Principale (Exchange)
+[[mail.accounts]]
+name = "Outlook Principale"
+email = "w.mostefaoui@outlook.fr"
+display_name = "Walid Mostefaoui"
+type = "Microsoft"  # Auto-configured with Microsoft/Outlook defaults
+
+# Outlook Secondaire (Exchange)
+[[mail.accounts]]
+name = "Outlook Secondaire"
+email = "w.mostefaoui.2@outlook.fr"
+display_name = "Walid Mostefaoui"
+type = "Microsoft"  # Auto-configured with Microsoft/Outlook defaults

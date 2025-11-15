@@ -421,6 +421,21 @@ my-task = true
 - **Error handling**: Interactive prompt to continue or abort on failure
 - **Required**: Must return 0 (success) or 1 (failure)
 
+### Mail Accounts Automation
+- **Script**: `automatisations/setup-mail-accounts.sh`
+- **Purpose**: Generates mobileconfig profiles for email accounts
+- **Configuration**: `[mail]` section in `mac-setup.toml`
+- **Process**:
+  1. Reads account configs from TOML (email, servers, type)
+  2. Generates `.mobileconfig` files from template
+  3. Saves to `~/Desktop/mail-profiles/`
+  4. Displays installation instructions
+- **Provider Presets**: Built-in configs for Gmail, Microsoft/Outlook, iCloud, Yahoo
+- **Security**: Passwords NOT stored in config - user enters on first Mail.app launch
+- **Installation**: User installs profiles via System Settings > Profiles (requires manual interaction)
+- **OAuth2 Support**: Gmail/Microsoft accounts require browser authentication
+- **Template**: `templates/mail-account.mobileconfig.template`
+
 ## Important Variables
 
 ### Paths

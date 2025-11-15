@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<!-- IMAP Configuration -->
+		<dict>
+			<key>PayloadType</key>
+			<string>com.apple.mail.managed</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadIdentifier</key>
+			<string>com.mac-setup.mail.{{ACCOUNT_ID}}.incoming</string>
+			<key>PayloadUUID</key>
+			<string>{{INCOMING_UUID}}</string>
+			<key>PayloadDisplayName</key>
+			<string>{{ACCOUNT_NAME}} - IMAP</string>
+			<key>PayloadDescription</key>
+			<string>IMAP configuration for {{ACCOUNT_NAME}}</string>
+
+			<!-- Email Settings -->
+			<key>EmailAccountDescription</key>
+			<string>{{ACCOUNT_NAME}}</string>
+			<key>EmailAccountName</key>
+			<string>{{DISPLAY_NAME}}</string>
+			<key>EmailAccountType</key>
+			<string>EmailTypeIMAP</string>
+			<key>EmailAddress</key>
+			<string>{{EMAIL_ADDRESS}}</string>
+
+			<!-- IMAP Server Settings -->
+			<key>IncomingMailServerHostName</key>
+			<string>{{IMAP_SERVER}}</string>
+			<key>IncomingMailServerPortNumber</key>
+			<integer>{{IMAP_PORT}}</integer>
+			<key>IncomingMailServerUseSSL</key>
+			<true/>
+			<key>IncomingMailServerAuthentication</key>
+			<string>EmailAuthPassword</string>
+			<key>IncomingMailServerUsername</key>
+			<string>{{IMAP_USERNAME}}</string>
+
+			<!-- Password (Optional - prompts if not provided) -->
+			<!-- <key>IncomingPassword</key> -->
+			<!-- <string>{{IMAP_PASSWORD}}</string> -->
+
+			<!-- SMTP Server Settings -->
+			<key>OutgoingMailServerHostName</key>
+			<string>{{SMTP_SERVER}}</string>
+			<key>OutgoingMailServerPortNumber</key>
+			<integer>{{SMTP_PORT}}</integer>
+			<key>OutgoingMailServerUseSSL</key>
+			<true/>
+			<key>OutgoingMailServerAuthentication</key>
+			<string>EmailAuthPassword</string>
+			<key>OutgoingMailServerUsername</key>
+			<string>{{SMTP_USERNAME}}</string>
+			<key>OutgoingPasswordSameAsIncomingPassword</key>
+			<true/>
+
+			<!-- Password (Optional - prompts if not provided) -->
+			<!-- <key>OutgoingPassword</key> -->
+			<!-- <string>{{SMTP_PASSWORD}}</string> -->
+
+			<!-- Additional Settings -->
+			<key>PreventMove</key>
+			<false/>
+			<key>PreventAppSheet</key>
+			<false/>
+			<key>SMIMEEnabled</key>
+			<false/>
+			<key>allowMailDrop</key>
+			<true/>
+		</dict>
+	</array>
+
+	<!-- Profile Metadata -->
+	<key>PayloadDisplayName</key>
+	<string>{{ACCOUNT_NAME}}</string>
+	<key>PayloadIdentifier</key>
+	<string>com.mac-setup.mail.{{ACCOUNT_ID}}</string>
+	<key>PayloadUUID</key>
+	<string>{{PROFILE_UUID}}</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+	<key>PayloadDescription</key>
+	<string>Email account configuration for {{ACCOUNT_NAME}}</string>
+	<key>PayloadOrganization</key>
+	<string>Mac Setup Automation</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+</dict>
+</plist>
