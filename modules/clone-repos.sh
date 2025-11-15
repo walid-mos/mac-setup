@@ -98,8 +98,7 @@ select_destination_interactive() {
     --height=40% \
     --border \
     --header="Sélectionner la destination pour $repo_name" \
-    --prompt="Destination> " \
-    < /dev/tty > /dev/tty 2>&1)
+    --prompt="Destination> ")
 
   if [[ -z "$selected" ]]; then
     return 1
@@ -404,8 +403,7 @@ module_clone_repos() {
         --header="Select repos to clone from $org (Tab=multi-select, Enter=confirm)" \
         --preview="echo {3}" \
         --preview-window=up:3:wrap \
-        --preview-label="Description" \
-        < /dev/tty > /dev/tty 2>&1)
+        --preview-label="Description")
 
       if [[ -z "$selected_repos" ]]; then
         log_info "No repositories selected for $org"
@@ -623,8 +621,7 @@ module_clone_repos() {
         --delimiter='|' \
         --with-nth=1,2 \
         --nth=1 \
-        --header="Select repos to clone from $group (Tab=multi-select, Enter=confirm)" \
-        < /dev/tty > /dev/tty 2>&1)
+        --header="Select repos to clone from $group (Tab=multi-select, Enter=confirm)")
 
       if [[ -z "$selected_repos" ]]; then
         log_info "No repositories selected for $group"
