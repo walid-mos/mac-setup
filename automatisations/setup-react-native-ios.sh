@@ -90,12 +90,40 @@ automation_setup_react_native_ios() {
   log_subsection "Configuration de l'environnement React Native iOS"
 
   # ----------------------------------
-  # Step 0: Ensure Homebrew Ruby is in PATH
+  # Step 0: Verify Homebrew Ruby installation
   # ----------------------------------
+  log_step "Vérification de l'installation Homebrew Ruby..."
+
+  local homebrew_ruby_bin="/opt/homebrew/opt/ruby/bin/ruby"
+
+  # Check if Homebrew Ruby binary exists
+  if [[ ! -f "$homebrew_ruby_bin" ]]; then
+    log_error "Homebrew Ruby n'est pas installé"
+    log_info "Ajoutez 'ruby' dans [brew.packages.languages] du fichier mac-setup.toml"
+    log_info "Puis réexécutez: ./setup.sh --module brew-packages"
+    return 1
+  fi
+
+  log_success "Binaire Homebrew Ruby trouvé: $homebrew_ruby_bin"
+
   # Prepend Homebrew Ruby to PATH for this script execution
   # This ensures we use Ruby 3.x from Homebrew, not system Ruby 2.6.x
   export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
   export PATH="/opt/homebrew/lib/ruby/gems/3.4.0/bin:$PATH"
+
+  # Verify that 'which ruby' now points to Homebrew Ruby
+  local active_ruby
+  active_ruby=$(which ruby)
+
+  if [[ "$active_ruby" != "$homebrew_ruby_bin" ]]; then
+    log_error "Ruby PATH incorrect"
+    log_info "Attendu: $homebrew_ruby_bin"
+    log_info "Actuel: $active_ruby"
+    log_info "Le PATH n'a pas été correctement configuré"
+    return 1
+  fi
+
+  log_success "Ruby PATH correct: $active_ruby"
 
   # ----------------------------------
   # Step 1: Verify macOS
@@ -110,15 +138,9 @@ automation_setup_react_native_ios() {
   log_success "macOS détecté"
 
   # ----------------------------------
-  # Step 2: Verify Ruby installation
+  # Step 2: Verify Ruby version
   # ----------------------------------
-  log_step "Vérification de Ruby..."
-
-  if ! command_exists ruby; then
-    log_error "Ruby n'est pas installé"
-    log_info "Ruby devrait être installé via Homebrew (brew install ruby)"
-    return 1
-  fi
+  log_step "Vérification de la version Ruby..."
 
   local ruby_version
   ruby_version=$(ruby --version | awk '{print $2}')
@@ -127,6 +149,7 @@ automation_setup_react_native_ios() {
     log_success "Ruby $ruby_version installé (>= $REQUIRED_RUBY_VERSION requis)"
   else
     log_error "Ruby $ruby_version est trop ancien (>= $REQUIRED_RUBY_VERSION requis)"
+    log_info "Homebrew Ruby devrait être >= 3.4. Essayez: brew upgrade ruby"
     return 1
   fi
 

@@ -10,6 +10,10 @@
 module_stow_dotfiles() {
   log_section "Stow Dotfiles: Setting Up Configuration Files"
 
+  # Save current directory to restore later
+  local original_dir
+  original_dir="$(pwd)"
+
   # Verify prerequisites
   require_tool git "Git not found. Please run prerequisites module first"
   require_tool stow "GNU Stow not found. Please run brew-packages module first or install stow manually"
@@ -87,6 +91,7 @@ module_stow_dotfiles() {
 
   if [[ ${#packages[@]} -eq 0 ]]; then
     log_warning "No stow packages detected in $DOTFILES_DIR"
+    cd "$original_dir" || log_warning "Failed to restore working directory to: $original_dir"
     return 0
   fi
 
@@ -223,6 +228,9 @@ module_stow_dotfiles() {
   else
     log_success "All dotfiles packages installed successfully with stow"
   fi
+
+  # Restore original directory before returning
+  cd "$original_dir" || log_warning "Failed to restore working directory to: $original_dir"
 
   return 0
 }

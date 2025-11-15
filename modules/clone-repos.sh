@@ -88,14 +88,13 @@ select_destination_interactive() {
   log_question "Aucun mapping trouvé pour '$repo_name'. Où cloner ce repo ?"
   echo "" >&2
 
-  # Use fzf for selection (use /dev/tty for interactive display)
+  # Use fzf for selection
   local selected
   selected=$(printf '%s\n' "${destinations[@]}" | fzf \
     --height=40% \
     --border \
     --header="Sélectionner la destination pour $repo_name" \
-    --prompt="Destination> " \
-    </dev/tty 2>/dev/tty)
+    --prompt="Destination> ")
 
   if [[ -z "$selected" ]]; then
     return 1
@@ -197,6 +196,7 @@ clone_single_gitlab_repo() {
   local repo_name="$1"
   local group="$2"
   local dest="$3"
+  local clone_url="$4"  # Optional: clone URL (if already fetched from group API)
   local repo_path="$DEV_ROOT/$dest/$repo_name"
   local full_path="$group/$repo_name"
 
@@ -205,14 +205,15 @@ clone_single_gitlab_repo() {
     return 0
   fi
 
-  # Get HTTPS clone URL from GitLab API (similar to GitHub implementation)
-  local clone_url
-  clone_url=$(glab api "/projects/$(echo "$full_path" | sed 's/\//%2F/g')" --jq '.http_url_to_repo' 2>/dev/null)
-
+  # Get HTTPS clone URL if not provided (backward compatibility)
   if [[ -z "$clone_url" ]]; then
-    echo "✗ $repo_name (failed to get clone URL)" >&2
-    log_error "Failed to retrieve HTTPS clone URL for: $full_path"
-    return 1
+    clone_url=$(glab api "/projects/$(echo "$full_path" | sed 's/\//%2F/g')" 2>/dev/null | jq -r '.http_url_to_repo')
+
+    if [[ -z "$clone_url" ]]; then
+      echo "✗ $repo_name (failed to get clone URL)" >&2
+      log_error "Failed to retrieve HTTPS clone URL for: $full_path"
+      return 1
+    fi
   fi
 
   # Ensure destination directory exists
@@ -574,8 +575,12 @@ module_clone_repos() {
       local repo_names=()
 
       # Extract repository information from JSON using jq
-      while IFS= read -r repo_name; do
-        [[ -z "$repo_name" ]] && continue
+      while IFS= read -r repo_json; do
+        [[ -z "$repo_json" ]] && continue
+
+        local repo_name repo_clone_url
+        repo_name=$(echo "$repo_json" | jq -r '.name')
+        repo_clone_url=$(echo "$repo_json" | jq -r '.http_url_to_repo')
 
         # Get destination
         local dest
@@ -585,9 +590,9 @@ module_clone_repos() {
           dest="[NO MAPPING]"
         fi
 
-        repo_names+=("$repo_name|$dest")
+        repo_names+=("$repo_name|$dest|$repo_clone_url")
         repo_list_lines+=("$(printf "%s|%s" "$repo_name" "$dest")")
-      done < <(echo "$repos_json" | jq -r '.[] | .name')
+      done < <(echo "$repos_json" | jq -c '.[]')
 
       if [[ ${#repo_list_lines[@]} -eq 0 ]]; then
         continue
@@ -618,10 +623,11 @@ module_clone_repos() {
         local repo_name
         repo_name=$(echo "$selected_line" | cut -d'|' -f1)
 
-        # Find destination
-        local repo_info dest
+        # Find destination and clone URL
+        local repo_info dest clone_url
         repo_info=$(printf '%s\n' "${repo_names[@]}" | grep "^$repo_name|")
         dest=$(echo "$repo_info" | cut -d'|' -f2)
+        clone_url=$(echo "$repo_info" | cut -d'|' -f3)
 
         # Handle repos without mapping
         if [[ "$dest" == "[NO MAPPING]" ]]; then
@@ -639,8 +645,8 @@ module_clone_repos() {
           continue
         fi
 
-        # Add to clone list
-        repos_to_clone+=("$repo_name|$dest")
+        # Add to clone list with clone URL
+        repos_to_clone+=("$repo_name|$dest|$clone_url")
       done <<< "$selected_repos"
 
       # Phase 2: Clone repositories in parallel
@@ -650,10 +656,11 @@ module_clone_repos() {
 
         if [[ "$DRY_RUN" == "true" ]]; then
           for repo_info in "${repos_to_clone[@]}"; do
-            local repo_name dest
+            local repo_name dest clone_url
             repo_name=$(echo "$repo_info" | cut -d'|' -f1)
             dest=$(echo "$repo_info" | cut -d'|' -f2)
-            log_dry_run "Would clone: $group/$repo_name -> $DEV_ROOT/$dest/$repo_name"
+            clone_url=$(echo "$repo_info" | cut -d'|' -f3)
+            log_dry_run "Would clone: $clone_url -> $DEV_ROOT/$dest/$repo_name"
             ((gitlab_cloned++))
           done
         else
@@ -665,14 +672,15 @@ module_clone_repos() {
 
           # Launch all clone jobs with semaphore control
           for repo_info in "${repos_to_clone[@]}"; do
-            local repo_name dest
+            local repo_name dest clone_url
             repo_name=$(echo "$repo_info" | cut -d'|' -f1)
             dest=$(echo "$repo_info" | cut -d'|' -f2)
+            clone_url=$(echo "$repo_info" | cut -d'|' -f3)
 
             # Launch clone in background with semaphore
             (
               read -u 3  # Acquire token (blocks if none available)
-              clone_single_gitlab_repo "$repo_name" "$group" "$dest"
+              clone_single_gitlab_repo "$repo_name" "$group" "$dest" "$clone_url"
               local result=$?
               echo >&3  # Return token
               exit $result

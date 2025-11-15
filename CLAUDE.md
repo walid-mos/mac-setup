@@ -423,18 +423,31 @@ my-task = true
 
 ### Mail Accounts Automation
 - **Script**: `automatisations/setup-mail-accounts.sh`
-- **Purpose**: Generates mobileconfig profiles for email accounts
+- **Purpose**: Interactive guided setup for email accounts in Mail.app
 - **Configuration**: `[mail]` section in `mac-setup.toml`
+- **Approach**: Replaces mobileconfig profiles with provider-specific guided flows
+- **Why Changed**: macOS Big Sur+ removed CLI profile installation; OAuth2 (Gmail/Microsoft) requires browser authentication
 - **Process**:
-  1. Reads account configs from TOML (email, servers, type)
-  2. Generates `.mobileconfig` files from template
-  3. Saves to `~/Desktop/mail-profiles/`
-  4. Displays installation instructions
-- **Provider Presets**: Built-in configs for Gmail, Microsoft/Outlook, iCloud, Yahoo
-- **Security**: Passwords NOT stored in config - user enters on first Mail.app launch
-- **Installation**: User installs profiles via System Settings > Profiles (requires manual interaction)
-- **OAuth2 Support**: Gmail/Microsoft accounts require browser authentication
-- **Template**: `templates/mail-account.mobileconfig.template`
+  1. Reads account configs from TOML (email, display name, type, server details)
+  2. Routes each account to appropriate setup function based on type
+  3. Displays clear step-by-step instructions in terminal
+  4. Auto-copies credentials to clipboard
+  5. Opens Mail.app automatically
+  6. Verifies account added via SQLite database check
+- **Provider Types**:
+  - **Gmail**: OAuth2 browser flow (provider preset for IMAP/SMTP details)
+  - **Microsoft/Outlook**: OAuth2 browser flow (provider preset for IMAP/SMTP details)
+  - **IMAP**: Traditional password auth with manual server configuration
+  - **Presets**: iCloud, Yahoo (also use IMAP flow with provider presets)
+- **Key Features**:
+  - Provider-specific instructions (different for OAuth vs IMAP)
+  - Clipboard integration (auto-copy email addresses)
+  - SQLite database verification (confirms account added successfully)
+  - Temp file creation for IMAP (full server details saved to `/tmp` for reference)
+  - Clean terminal UI with box drawing characters and progress tracking
+  - Timeout protection (5 minutes per account)
+- **User Experience**: 2-3 minutes per account; fully OAuth2-compatible
+- **Automation Level**: ~60% automated (unavoidable user interaction for OAuth2 security)
 
 ## Important Variables
 

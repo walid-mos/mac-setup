@@ -73,14 +73,17 @@ docker = [
 dev = [
   "git-delta",
   "yamllint",
-  "node",
-  "python@3.11",
   "mysql",
   "postgresql@18"
 ]
 
 # Programming languages and compilers
-languages = []
+languages = [
+    "node",
+    "python@3.11",
+    "ruby", 
+    "rbenv", 
+]
 
 # Deployment and infrastructure
 deployment = [

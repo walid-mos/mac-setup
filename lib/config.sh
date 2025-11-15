@@ -96,7 +96,7 @@ FINDER_NEW_WINDOW_TARGET="${FINDER_NEW_WINDOW_TARGET:-PfHm}"  # Default folder f
 # System configuration
 SYSTEM_DISABLE_GATEKEEPER="${SYSTEM_DISABLE_GATEKEEPER:-true}"
 SYSTEM_FAST_KEY_REPEAT="${SYSTEM_FAST_KEY_REPEAT:-true}"
-SYSTEM_SPACES_SPAN_DISPLAYS="${SYSTEM_SPACES_SPAN_DISPLAYS:-true}"
+SYSTEM_SPACES_SPAN_DISPLAYS="${SYSTEM_SPACES_SPAN_DISPLAYS:-false}"
 PROMPT_COMPUTER_NAME="${PROMPT_COMPUTER_NAME:-true}"  # Prompt to configure computer name during setup
 
 # -----------------------------------------------------------------------------
