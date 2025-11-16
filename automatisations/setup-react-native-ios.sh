@@ -158,11 +158,6 @@ automation_setup_react_native_ios() {
   # ----------------------------------
   log_step "Vérification de CocoaPods..."
 
-  # Ensure user-installed gems are in PATH
-  local ruby_version
-  ruby_version="$(ruby -e 'puts RUBY_VERSION.split(".")[0,2].join(".") + ".0"')"
-  export PATH="$HOME/.gem/ruby/${ruby_version}/bin:$PATH"
-
   if command_exists pod; then
     local pod_version
     pod_version=$(pod --version 2>/dev/null || echo "unknown")
@@ -173,11 +168,11 @@ automation_setup_react_native_ios() {
     if [[ "$DRY_RUN" == "true" ]]; then
       log_info "[DRY RUN] Would execute: gem install cocoapods"
     else
-      if gem install cocoapods --user-install; then
+      if gem install cocoapods; then
         log_success "CocoaPods installé avec succès"
       else
         log_error "Échec de l'installation de CocoaPods"
-        log_info "Essayez manuellement: gem install cocoapods --user-install"
+        log_info "Essayez manuellement: gem install cocoapods"
         return 1
       fi
     fi
