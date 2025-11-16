@@ -131,7 +131,7 @@ ask_yes_no() {
   fi
 
   while true; do
-    read -r -p "$question $prompt: " response
+    read -r -p "$question $prompt: " response </dev/tty
     response="${response:-$default}"
     # Convert to lowercase (compatible with older bash)
     response_lower=$(echo "$response" | tr '[:upper:]' '[:lower:]')
