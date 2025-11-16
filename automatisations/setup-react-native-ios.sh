@@ -41,7 +41,7 @@ check_xcode_installation() {
 check_ios_simulator() {
   if command_exists xcrun; then
     local simulator_count
-    simulator_count=$(xcrun simctl list devices available 2>/dev/null | grep -c "iPhone" || echo "0")
+    simulator_count=$(xcrun simctl list devices available 2>/dev/null | grep -c "iPhone" || true)
 
     if [[ "$simulator_count" -gt 0 ]]; then
       return 0
@@ -372,7 +372,7 @@ EOF
 
   if check_ios_simulator; then
     local simulator_count
-    simulator_count=$(xcrun simctl list devices available 2>/dev/null | grep -c "iPhone" || echo "0")
+    simulator_count=$(xcrun simctl list devices available 2>/dev/null | grep -c "iPhone" || true)
     log_success "$simulator_count simulateurs iOS disponibles"
   else
     log_warning "Aucun simulateur iOS détecté"
@@ -428,7 +428,7 @@ EOF
     # iOS Simulators
     if check_ios_simulator; then
       local sim_count
-      sim_count=$(xcrun simctl list devices available 2>/dev/null | grep -c "iPhone" || echo "0")
+      sim_count=$(xcrun simctl list devices available 2>/dev/null | grep -c "iPhone" || true)
       log_info "  ✅ Simulateurs iOS: $sim_count disponibles"
     else
       log_info "  ⚠️  Simulateurs iOS: Aucun détecté"
