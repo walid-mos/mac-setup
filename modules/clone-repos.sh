@@ -88,8 +88,6 @@ select_destination_interactive() {
     echo ""
     log_question "Aucun mapping trouvé pour '$repo_name'. Où cloner ce repo ?"
     echo ""
-    # Force flush by calling external command
-    /bin/cat </dev/null
   } >&2
 
   # Use fzf for selection
@@ -142,8 +140,9 @@ setup_job_pool() {
 # Cleanup job pool
 # -----------------------------------------------------------------------------
 cleanup_job_pool() {
-  # Close file descriptor 3 if it's open
-  exec 3>&- 2>/dev/null || true
+  # Close both read and write sides of file descriptor 3
+  exec 3>&- 2>/dev/null || true  # Close write side
+  exec 3<&- 2>/dev/null || true  # Close read side
 }
 
 # -----------------------------------------------------------------------------
@@ -389,8 +388,6 @@ module_clone_repos() {
       {
         log_info "Select repositories to clone (Tab=select, Enter=confirm):"
         echo ""
-        # Force flush by calling external command
-        /bin/cat </dev/null
       } >&2
 
       local selected_repos
@@ -610,8 +607,6 @@ module_clone_repos() {
       {
         log_info "Select repositories to clone (Tab=select, Enter=confirm):"
         echo ""
-        # Force flush by calling external command
-        /bin/cat </dev/null
       } >&2
 
       local selected_repos
