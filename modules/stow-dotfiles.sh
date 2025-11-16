@@ -140,10 +140,12 @@ module_stow_dotfiles() {
         if echo "$stow_output" | grep -qE "existing target|not owned by stow|cannot stow"; then
           log_verbose "Conflicts detected, removing existing files/symlinks"
 
-          # Extract conflicting paths from stow output (paths appear after "stow: ")
+          # Extract conflicting paths from stow output (multiple patterns)
+          # Pattern 1: "stow: .config/zsh" (for "existing target is not owned by stow")
+          # Pattern 2: "over existing target .zshenv" (for "cannot stow X over existing target Y")
           local conflicting_paths
           conflicting_paths=$(echo "$stow_output" | \
-            sed -n 's/.*stow: //p' | \
+            sed -n 's/.*stow: \([^ ]*\).*/\1/p; s/.*over existing target \([^ ]*\).*/\1/p' | \
             sort -u)
 
           # Remove each conflicting file/symlink/directory
