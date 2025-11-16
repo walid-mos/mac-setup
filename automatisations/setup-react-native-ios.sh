@@ -158,6 +158,11 @@ automation_setup_react_native_ios() {
   # ----------------------------------
   log_step "Vérification de CocoaPods..."
 
+  # Ensure user-installed gems are in PATH
+  local ruby_version
+  ruby_version="$(ruby -e 'puts RUBY_VERSION.split(".")[0,2].join(".") + ".0"')"
+  export PATH="$HOME/.gem/ruby/${ruby_version}/bin:$PATH"
+
   if command_exists pod; then
     local pod_version
     pod_version=$(pod --version 2>/dev/null || echo "unknown")
@@ -193,6 +198,14 @@ automation_setup_react_native_ios() {
     if [[ "$DRY_RUN" == "true" ]]; then
       log_info "[DRY RUN] Would execute: pod setup"
     else
+      # Verify pod command is available
+      if ! command_exists pod; then
+        log_error "Commande 'pod' non trouvée dans PATH"
+        log_info "PATH actuel: $PATH"
+        log_info "Essayez de relancer votre shell: exec zsh"
+        return 1
+      fi
+
       log_warning "Cette opération peut être longue, merci de patienter..."
 
       if pod setup; then
