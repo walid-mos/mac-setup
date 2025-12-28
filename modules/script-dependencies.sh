@@ -38,6 +38,8 @@ module_script_dependencies() {
           log_error "This tool is required for the script to function"
           return 1
         }
+        # Clear bash hash table so new commands are found immediately
+        hash -r
         log_success "Installed: $tool"
         ((installed++))
       fi
