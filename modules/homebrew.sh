@@ -9,6 +9,16 @@
 module_homebrew() {
   log_section "Homebrew: Installing Homebrew"
 
+  # Ensure Homebrew is in PATH if already installed (critical for non-login shells)
+  # This must run BEFORE command_exists check, as PATH might not include /opt/homebrew/bin
+  if [[ -f "/opt/homebrew/bin/brew" ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || true
+    hash -r
+  elif [[ -f "/usr/local/bin/brew" ]]; then
+    eval "$(/usr/local/bin/brew shellenv)" 2>/dev/null || true
+    hash -r
+  fi
+
   # Check if Homebrew is already installed
   if command_exists brew; then
     log_success "Homebrew is already installed"
