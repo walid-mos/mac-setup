@@ -263,12 +263,12 @@ init_toml_parser() {
   fi
 
   # Verify dasel actually works (use 'command' to bypass hash table)
-  if ! command dasel --version >/dev/null 2>&1; then
+  if ! command dasel version >/dev/null 2>&1; then
     log_error "dasel is installed but not functioning correctly"
     log_error "Try reinstalling: brew reinstall dasel"
     return 1
   fi
 
-  log_verbose "Using dasel for TOML parsing ($(dasel --version 2>/dev/null | head -1))"
+  log_verbose "Using dasel for TOML parsing ($(dasel version 2>/dev/null | head -1))"
   return 0
 }
