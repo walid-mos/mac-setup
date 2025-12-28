@@ -46,7 +46,8 @@ core_tools = [
   "jq",
   "tree",
   "wget",
-  "dasel"
+  "dasel",
+  "tw93/tap/mole"
 ]
 
 # Terminal and multiplexers

@@ -74,9 +74,9 @@ module_directories() {
     log_verbose "Found override destination: $dest"
   done <<< "$override_values"
 
-  # Get unique destinations
-  local unique_destinations
-  unique_destinations=($(printf '%s\n' "${destinations[@]}" | sort -u))
+  # Get unique destinations (using mapfile to avoid word splitting issues)
+  local unique_destinations=()
+  mapfile -t unique_destinations < <(printf '%s\n' "${destinations[@]}" | sort -u)
 
   if [[ ${#unique_destinations[@]} -eq 0 ]]; then
     log_warning "No destinations found in TOML configuration"

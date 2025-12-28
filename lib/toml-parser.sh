@@ -262,6 +262,13 @@ init_toml_parser() {
     return 1
   fi
 
-  log_verbose "Using dasel for TOML parsing"
+  # Verify dasel actually works
+  if ! dasel --version >/dev/null 2>&1; then
+    log_error "dasel is installed but not functioning correctly"
+    log_error "Try reinstalling: brew reinstall dasel"
+    return 1
+  fi
+
+  log_verbose "Using dasel for TOML parsing ($(dasel --version 2>/dev/null | head -1))"
   return 0
 }

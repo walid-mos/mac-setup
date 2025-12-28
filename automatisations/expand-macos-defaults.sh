@@ -146,20 +146,12 @@ configure_security() {
   # Note: Gatekeeper disable is handled by the macos-defaults module
   # to avoid duplicate prompts
 
-  # Disable quarantine for downloaded files
+  # Disable quarantine for downloaded files (also disables unidentified developer warning)
   if [[ "$DRY_RUN" == "true" ]]; then
     log_info "[DRY RUN] Would disable quarantine for downloaded files"
   else
     defaults write com.apple.LaunchServices LSQuarantine -bool false
     log_success "Quarantaine des fichiers téléchargés désactivée"
-  fi
-
-  # Disable the warning when opening apps from unidentified developers
-  if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would disable unidentified developer warning"
-  else
-    defaults write com.apple.LaunchServices LSQuarantine -bool false
-    log_success "Avertissement développeurs non identifiés désactivé"
   fi
 
   log_info "Note: Quarantine désactivée pour faciliter le développement"

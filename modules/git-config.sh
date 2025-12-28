@@ -114,9 +114,10 @@ module_git_config() {
       glab_path=$(command -v glab)
 
       # Configure credential helper (use --replace-all to handle existing entries)
-      git config --global --replace-all credential."https://gitlab.com".helper "!${glab_path} auth git-credential" || {
+      # Quote the path to handle spaces in binary path
+      git config --global --replace-all credential."https://gitlab.com".helper "!\"${glab_path}\" auth git-credential" || {
         # If --replace-all fails (no existing entry), try --add
-        git config --global --add credential."https://gitlab.com".helper "!${glab_path} auth git-credential" || {
+        git config --global --add credential."https://gitlab.com".helper "!\"${glab_path}\" auth git-credential" || {
           log_warning "Failed to configure GitLab credential helper"
         }
       }

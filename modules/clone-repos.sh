@@ -129,6 +129,9 @@ setup_job_pool() {
   # Remove FIFO file (still accessible via FD 3)
   rm "$fifo_path"
 
+  # Ensure cleanup on exit/interrupt
+  trap 'cleanup_job_pool' EXIT INT TERM
+
   # Initialize semaphore with N tokens
   local i
   for i in $(seq 1 "$max_jobs"); do
@@ -140,9 +143,9 @@ setup_job_pool() {
 # Cleanup job pool
 # -----------------------------------------------------------------------------
 cleanup_job_pool() {
-  # Close both read and write sides of file descriptor 3
-  exec 3>&- 2>/dev/null || true  # Close write side
-  exec 3<&- 2>/dev/null || true  # Close read side
+  # Close file descriptor 3 (read/write) in single operation
+  # Using subshell to isolate errors and ensure cleanup completes
+  { exec 3>&- ; } 2>/dev/null || true
 }
 
 # -----------------------------------------------------------------------------

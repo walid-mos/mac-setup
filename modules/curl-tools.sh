@@ -7,8 +7,25 @@
 # Commands are executed as-is without modification.
 # =============================================================================
 
+# Validate curl install command format
+validate_curl_command() {
+  local cmd="$1"
+
+  # Must contain curl or wget (it's a curl-tools module)
+  if [[ ! "$cmd" =~ (curl|wget) ]]; then
+    return 1
+  fi
+
+  # Block obviously dangerous patterns
+  if [[ "$cmd" =~ (rm\ -rf|mkfs|dd\ if=|>\s*/dev/) ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
 module_curl_tools() {
-  log_section "📦 Installing Curl-based Tools"
+  log_section "Installing Curl-based Tools"
 
   # Dynamically detect all curl tools from TOML
   local tools
@@ -69,6 +86,13 @@ module_curl_tools() {
 
     log_info "Installing $tool_name..."
     log_verbose "Command: $install_command"
+
+    # Validate command format
+    if ! validate_curl_command "$install_command"; then
+      log_error "Invalid curl command format for $tool_name (must contain curl or wget)"
+      log_warning "Skipping: $install_command"
+      continue
+    fi
 
     if [[ "$DRY_RUN" == "true" ]]; then
       log_dry_run "Would execute: $install_command"

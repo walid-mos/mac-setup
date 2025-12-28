@@ -239,7 +239,8 @@ main() {
   display_validation_summary
 
   # Track module execution
-  local total_modules=11
+  # Count is calculated dynamically from module executions below
+  local total_modules=0
   local successful_modules=0
   local failed_modules=0
 
@@ -249,6 +250,7 @@ main() {
 
   # Execute modules in the correct order
   # Prerequisites (Xcode CLI - provides git)
+  ((total_modules++))
   if run_module "prerequisites" "Prerequisites" "module_prerequisites"; then
     ((successful_modules++))
   else
@@ -256,6 +258,7 @@ main() {
   fi
 
   # Homebrew (provides brew)
+  ((total_modules++))
   if run_module "homebrew" "Homebrew" "module_homebrew"; then
     ((successful_modules++))
   else
@@ -263,6 +266,7 @@ main() {
   fi
 
   # Script dependencies (dasel, jq - requires brew)
+  ((total_modules++))
   if run_module "script-dependencies" "Script Dependencies" "module_script_dependencies"; then
     ((successful_modules++))
   else
@@ -274,6 +278,7 @@ main() {
   init_toml_parser
 
   # Curl Tools (Claude CLI, fnm, pnpm)
+  ((total_modules++))
   if run_module "curl-tools" "Curl Tools" "module_curl_tools"; then
     ((successful_modules++))
   else
@@ -281,6 +286,7 @@ main() {
   fi
 
   # Brew Packages (stow, neovim, tmux, etc.)
+  ((total_modules++))
   if run_module "brew-packages" "Brew Packages" "module_brew_packages"; then
     ((successful_modules++))
   else
@@ -288,6 +294,7 @@ main() {
   fi
 
   # Brew Casks (applications)
+  ((total_modules++))
   if run_module "brew-casks" "Brew Casks" "module_brew_casks"; then
     ((successful_modules++))
   else
@@ -295,6 +302,7 @@ main() {
   fi
 
   # Stow Dotfiles (requires git and stow)
+  ((total_modules++))
   if run_module "stow-dotfiles" "Stow Dotfiles" "module_stow_dotfiles"; then
     ((successful_modules++))
   else
@@ -302,6 +310,7 @@ main() {
   fi
 
   # Git Configuration
+  ((total_modules++))
   if run_module "git-config" "Git Configuration" "module_git_config"; then
     ((successful_modules++))
   else
@@ -309,6 +318,7 @@ main() {
   fi
 
   # Directory Structure
+  ((total_modules++))
   if run_module "directories" "Directory Structure" "module_directories"; then
     ((successful_modules++))
   else
@@ -316,6 +326,7 @@ main() {
   fi
 
   # Clone Repositories (requires jq)
+  ((total_modules++))
   if run_module "clone-repos" "Clone Repositories" "module_clone_repos"; then
     ((successful_modules++))
   else
@@ -323,6 +334,7 @@ main() {
   fi
 
   # macOS Defaults
+  ((total_modules++))
   if run_module "macos-defaults" "macOS Defaults" "module_macos_defaults"; then
     ((successful_modules++))
   else
@@ -330,6 +342,7 @@ main() {
   fi
 
   # Custom Automatisations (runs after all main modules)
+  ((total_modules++))
   if run_module "automatisations" "Automatisations" "module_automatisations"; then
     ((successful_modules++))
   else

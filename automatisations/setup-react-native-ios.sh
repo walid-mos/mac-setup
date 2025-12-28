@@ -109,7 +109,13 @@ automation_setup_react_native_ios() {
   # Prepend Homebrew Ruby to PATH for this script execution
   # This ensures we use Ruby 3.x from Homebrew, not system Ruby 2.6.x
   export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
-  export PATH="/opt/homebrew/lib/ruby/gems/3.4.0/bin:$PATH"
+
+  # Detect Ruby gems version dynamically
+  local ruby_version
+  ruby_version=$(/opt/homebrew/opt/ruby/bin/ruby -e "puts RbConfig::CONFIG['ruby_version']" 2>/dev/null)
+  if [[ -n "$ruby_version" ]]; then
+    export PATH="/opt/homebrew/lib/ruby/gems/${ruby_version}/bin:$PATH"
+  fi
 
   # Verify that 'which ruby' now points to Homebrew Ruby
   local active_ruby

@@ -213,7 +213,11 @@ log_command() {
   if [[ "$VERBOSE_MODE" == "true" ]]; then
     eval "$command"
   else
-    eval "$command" >> "$LOG_FILE" 2>&1
+    if [[ -n "$LOG_FILE" ]] && [[ -d "$(dirname "$LOG_FILE")" ]]; then
+      eval "$command" >> "$LOG_FILE" 2>&1
+    else
+      eval "$command" >/dev/null 2>&1
+    fi
   fi
 }
 
@@ -265,7 +269,7 @@ log_git_error() {
     suggestion="Check network connection or increase GIT_CLONE_TIMEOUT in lib/config.sh (current: ${GIT_CLONE_TIMEOUT}s)"
 
   # Auth failures
-  elif [[ "$stderr_content" =~ "Permission denied"|"Could not read from remote"|"publickey" ]]; then
+  elif [[ "$stderr_content" =~ (Permission\ denied|Could\ not\ read\ from\ remote|publickey) ]]; then
     detected_issue="SSH authentication failure"
     if [[ "$repo_url" =~ ^git@ ]]; then
       suggestion="Run 'ssh-add -l' to check SSH keys, or 'gh auth login' for GitHub CLI auth"
@@ -274,17 +278,17 @@ log_git_error() {
     fi
 
   # Repository not found
-  elif [[ "$stderr_content" =~ "not found"|"Repository not found" ]]; then
+  elif [[ "$stderr_content" =~ (not\ found|Repository\ not\ found) ]]; then
     detected_issue="Repository not found"
     suggestion="Verify repository URL in mac-setup.toml and ensure repository exists and is accessible"
 
   # Branch not found
-  elif [[ "$stderr_content" =~ "branch".*"not found"|"Remote branch".*"not found" ]]; then
+  elif [[ "$stderr_content" =~ (branch.*not\ found|Remote\ branch.*not\ found) ]]; then
     detected_issue="Branch not found"
     suggestion="Check branch name in mac-setup.toml or DOTFILES_BRANCH variable"
 
   # Network issues
-  elif [[ "$stderr_content" =~ "Failed to connect"|"Connection timed out"|"Could not resolve hostname" ]]; then
+  elif [[ "$stderr_content" =~ (Failed\ to\ connect|Connection\ timed\ out|Could\ not\ resolve\ hostname) ]]; then
     detected_issue="Network connectivity issue"
     suggestion="Check internet connection and DNS resolution"
   fi
