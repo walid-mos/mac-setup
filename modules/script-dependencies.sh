@@ -14,9 +14,8 @@ module_script_dependencies() {
   require_tool brew "Homebrew not found. Please run homebrew module first"
 
   # Required tools for script functionality
-  # Note: dasel removed - using awk fallback for TOML parsing (dasel v2/v3 broke syntax)
   local required_tools=(
-    "jq"     # JSON parsing
+    "jq"  # JSON parsing (for GitHub/GitLab API responses)
   )
 
   local installed=0
