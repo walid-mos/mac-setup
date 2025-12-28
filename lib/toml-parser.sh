@@ -8,10 +8,14 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Check if dasel is available
+# Check if dasel is available and works correctly
+# NOTE: Disabled because dasel v2/v3 changed syntax and silently outputs
+# help text instead of data when using v1 syntax. Using awk fallback instead.
 # -----------------------------------------------------------------------------
 has_dasel() {
-  command_exists dasel
+  # Always return false to force awk fallback parser
+  # dasel v2/v3 broke backwards compatibility with v1 syntax
+  return 1
 }
 
 # -----------------------------------------------------------------------------
@@ -254,21 +258,6 @@ parse_toml_to_array() {
 # Initialize TOML parser
 # -----------------------------------------------------------------------------
 init_toml_parser() {
-  log_verbose "Initializing TOML parser..."
-
-  if ! has_dasel; then
-    log_error "dasel is required but not installed"
-    log_error "Module 00 should have installed it. This is a bug."
-    return 1
-  fi
-
-  # Verify dasel actually works (use 'command' to bypass hash table)
-  if ! command dasel version >/dev/null 2>&1; then
-    log_error "dasel is installed but not functioning correctly"
-    log_error "Try reinstalling: brew reinstall dasel"
-    return 1
-  fi
-
-  log_verbose "Using dasel for TOML parsing ($(dasel version 2>/dev/null | head -1))"
+  log_verbose "Initializing TOML parser (using awk fallback)..."
   return 0
 }
