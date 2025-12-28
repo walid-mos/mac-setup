@@ -303,6 +303,91 @@ Pour plus de détails sur une erreur, vous pouvez :
 2. Utiliser le mode dry-run pour voir ce qui serait exécuté
 3. Consulter les logs dans la console
 
+## Automatisation: NAS Auto-Mount (`setup-nas-automount.sh`)
+
+Configure le montage automatique des partages SMB/NAS avec des volumes qui apparaissent comme des disques indépendants dans Finder (pas groupés sous l'IP du serveur).
+
+### Architecture
+
+```
+setup-nas-automount.sh
+├── Store credentials → Keychain (secure)
+├── Create LaunchAgent → calls "nasreco --quiet" at login
+├── Setup sleepwatcher → reconnect on wake from sleep
+└── Interactive wizard
+
+Actual mounting → delegated to 'nasreco' (from stow dotfiles)
+```
+
+### Prérequis
+
+- **nasreco** doit être disponible (installé via stow dotfiles)
+- Module `stow-dotfiles` doit être exécuté avant
+
+### Fonctionnalités
+
+| Fonctionnalité | Description |
+|----------------|-------------|
+| **Volumes indépendants** | Chaque partage apparaît comme un disque séparé dans Finder |
+| **Mount path** | `~/NAS/` (pas besoin de sudo, contrairement à `/Volumes/`) |
+| **Auto-mount login** | LaunchAgent exécute `nasreco --quiet` au login |
+| **Auto-mount wake** | sleepwatcher reconnecte les partages au réveil du Mac |
+| **Credentials sécurisés** | Mot de passe stocké dans Keychain (AES-256-GCM) |
+
+### Configuration TOML
+
+```toml
+[automations.nas-shares]
+enabled = true
+server = "192.168.1.2"
+username = "monuser"
+mount_base = "$HOME/NAS"
+shares = ["Storage", "Medias", "photo"]
+```
+
+### Exécution
+
+```bash
+# Via le setup complet
+./setup.sh --module automatisations
+
+# Standalone
+./automatisations/setup-nas-automount.sh
+
+# Monte seulement (sans wizard)
+./automatisations/setup-nas-automount.sh --mount-only
+```
+
+### sleepwatcher (optionnel)
+
+Pour la reconnexion automatique au réveil :
+
+```bash
+brew install sleepwatcher
+brew services start sleepwatcher
+```
+
+Le script crée automatiquement `~/.wakeup` qui appelle `nasreco --quiet`.
+
+### Dépannage
+
+**nasreco non disponible ?**
+```bash
+# Installer les dotfiles d'abord
+./setup.sh --module stow-dotfiles
+```
+
+**Partages non montés ?**
+```bash
+# Vérifier l'état
+nasreco --status
+
+# Monter manuellement avec verbose
+nasreco --verbose
+```
+
+---
+
 ## Questions fréquentes
 
 **Q: Que se passe-t-il si une automatisation échoue ?**
