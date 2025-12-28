@@ -11,7 +11,7 @@ module_brew_packages() {
 
   # Dynamically detect all package categories from TOML
   local categories
-  categories=$(dasel -f "$TOML_CONFIG" -r toml 'brew.packages' 2>/dev/null | awk -F'=' '{print $1}' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+  categories=$(get_toml_section_keys "$TOML_CONFIG" "brew.packages")
 
   if [[ -z "$categories" ]]; then
     log_warning "No brew package categories found in TOML configuration"

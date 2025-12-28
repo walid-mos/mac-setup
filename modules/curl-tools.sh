@@ -29,7 +29,7 @@ module_curl_tools() {
 
   # Dynamically detect all curl tools from TOML
   local tools
-  tools=$(dasel -f "$TOML_CONFIG" -r toml 'curl_tools' 2>/dev/null | awk -F'=' '{print $1}' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+  tools=$(get_toml_section_keys "$TOML_CONFIG" "curl_tools")
 
   if [[ -z "$tools" ]]; then
     log_warning "No curl tools found in TOML configuration"
@@ -48,7 +48,7 @@ module_curl_tools() {
 
     # Get the full command from TOML
     local install_command
-    install_command=$(dasel -f "$TOML_CONFIG" -r toml "curl_tools.$tool_name" 2>/dev/null)
+    install_command=$(parse_toml_value "$TOML_CONFIG" "curl_tools.$tool_name")
 
     # Strip surrounding single quotes from TOML string value
     install_command="${install_command#\'}"
