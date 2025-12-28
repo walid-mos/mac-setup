@@ -46,7 +46,6 @@ core_tools = [
   "jq",
   "tree",
   "wget",
-  "dasel",
   "tw93/tap/mole"
 ]
 
