@@ -24,6 +24,8 @@ module_homebrew() {
       brew update || log_warning "Failed to update Homebrew"
     fi
 
+    # Clear hash table in case brew commands were cached as "not found"
+    hash -r
     return 0
   fi
 
@@ -49,6 +51,9 @@ module_homebrew() {
       log_warning "Failed to eval brew shellenv"
     }
   fi
+
+  # Clear hash table after PATH update
+  hash -r
 
   # Verify installation
   if command_exists brew; then
