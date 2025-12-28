@@ -3,21 +3,43 @@
 # =============================================================================
 # TOML Parser
 # =============================================================================
-# Parse TOML configuration files using awk.
-# No external dependencies required.
+# Parse TOML configuration files using dasel.
+# Falls back to basic grep/awk parsing if dasel is not available.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Parse TOML value
+# Check if dasel is available
 # -----------------------------------------------------------------------------
-parse_toml_value() {
+has_dasel() {
+  command_exists dasel
+}
+
+# -----------------------------------------------------------------------------
+# Parse TOML value using dasel
+# -----------------------------------------------------------------------------
+parse_toml_value_with_dasel() {
   local file="$1"
   local key="$2"
 
-  if [[ ! -f "$file" ]]; then
-    log_error "TOML file not found: $file"
-    return 1
-  fi
+  dasel -f "$file" -r toml "$key" 2>/dev/null || echo ""
+}
+
+# -----------------------------------------------------------------------------
+# Parse TOML array using dasel
+# -----------------------------------------------------------------------------
+parse_toml_array_with_dasel() {
+  local file="$1"
+  local key="$2"
+
+  dasel -f "$file" -r toml "$key.all()" 2>/dev/null | sed "s/^'//" | sed "s/'$//" || echo ""
+}
+
+# -----------------------------------------------------------------------------
+# Fallback: Parse TOML value with grep/awk (simple implementation)
+# -----------------------------------------------------------------------------
+parse_toml_value_fallback() {
+  local file="$1"
+  local key="$2"
 
   # Handle dotted keys (e.g., "git.user_name")
   local section=""
@@ -57,16 +79,11 @@ parse_toml_value() {
 }
 
 # -----------------------------------------------------------------------------
-# Parse TOML array
+# Fallback: Parse TOML array with grep/awk (simple implementation)
 # -----------------------------------------------------------------------------
-parse_toml_array() {
+parse_toml_array_fallback() {
   local file="$1"
   local key="$2"
-
-  if [[ ! -f "$file" ]]; then
-    log_error "TOML file not found: $file"
-    return 1
-  fi
 
   # Handle dotted keys (e.g., "brew.packages.core_tools")
   local section=""
@@ -90,6 +107,7 @@ parse_toml_array() {
       /^\[/ { in_section=0 }
       /^\['"$section"'\.'"$subsection"'\]/ { in_section=1; next }
       in_section && $0 ~ "^"field" *= *\\[" {
+        # Multi-line array
         in_array=1
         gsub(/^[^=]+ *= *\[/, "")
       }
@@ -146,6 +164,44 @@ parse_toml_array() {
 }
 
 # -----------------------------------------------------------------------------
+# Parse TOML value (auto-detect parser)
+# -----------------------------------------------------------------------------
+parse_toml_value() {
+  local file="$1"
+  local key="$2"
+
+  if [[ ! -f "$file" ]]; then
+    log_error "TOML file not found: $file"
+    return 1
+  fi
+
+  if has_dasel; then
+    parse_toml_value_with_dasel "$file" "$key"
+  else
+    parse_toml_value_fallback "$file" "$key"
+  fi
+}
+
+# -----------------------------------------------------------------------------
+# Parse TOML array (auto-detect parser)
+# -----------------------------------------------------------------------------
+parse_toml_array() {
+  local file="$1"
+  local key="$2"
+
+  if [[ ! -f "$file" ]]; then
+    log_error "TOML file not found: $file"
+    return 1
+  fi
+
+  if has_dasel; then
+    parse_toml_array_with_dasel "$file" "$key"
+  else
+    parse_toml_array_fallback "$file" "$key"
+  fi
+}
+
+# -----------------------------------------------------------------------------
 # Get all keys from a TOML section
 # -----------------------------------------------------------------------------
 get_toml_section_keys() {
@@ -181,7 +237,7 @@ toml_section_exists() {
 parse_toml_to_array() {
   local file="$1"
   local section="$2"
-  declare -n arr="$3"
+  declare -n arr="$3"  # nameref to associative array
 
   local keys
   keys="$(get_toml_section_keys "$file" "$section")"
@@ -195,9 +251,24 @@ parse_toml_to_array() {
 }
 
 # -----------------------------------------------------------------------------
-# Initialize TOML parser (no-op, kept for compatibility)
+# Initialize TOML parser
 # -----------------------------------------------------------------------------
 init_toml_parser() {
-  log_verbose "TOML parser ready"
+  log_verbose "Initializing TOML parser..."
+
+  if ! has_dasel; then
+    log_error "dasel is required but not installed"
+    log_error "Module 00 should have installed it. This is a bug."
+    return 1
+  fi
+
+  # Verify dasel actually works
+  if ! dasel --version >/dev/null 2>&1; then
+    log_error "dasel is installed but not functioning correctly"
+    log_error "Try reinstalling: brew reinstall dasel"
+    return 1
+  fi
+
+  log_verbose "Using dasel for TOML parsing ($(dasel --version 2>/dev/null | head -1))"
   return 0
 }

@@ -15,7 +15,8 @@ module_script_dependencies() {
 
   # Required tools for script functionality
   local required_tools=(
-    "jq"  # JSON parsing (for GitHub/GitLab API responses)
+    "dasel"  # TOML parsing
+    "jq"     # JSON parsing
   )
 
   local installed=0
@@ -37,8 +38,6 @@ module_script_dependencies() {
           log_error "This tool is required for the script to function"
           return 1
         }
-        # Clear bash hash table so new commands are found immediately
-        hash -r
         log_success "Installed: $tool"
         ((installed++))
       fi
