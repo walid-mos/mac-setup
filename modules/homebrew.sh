@@ -6,25 +6,39 @@
 # Install Homebrew package manager.
 # =============================================================================
 
+# Detect brew path based on architecture
+get_brew_path() {
+  if [[ -f "/opt/homebrew/bin/brew" ]]; then
+    echo "/opt/homebrew/bin/brew"
+  elif [[ -f "/usr/local/bin/brew" ]]; then
+    echo "/usr/local/bin/brew"
+  fi
+}
+
+# Source brew shellenv and clear hash table
+ensure_brew_in_path() {
+  local brew_path
+  brew_path="$(get_brew_path)"
+
+  if [[ -n "$brew_path" ]]; then
+    eval "$("$brew_path" shellenv)" 2>/dev/null || true
+    hash -r
+    return 0
+  fi
+  return 1
+}
+
 module_homebrew() {
   log_section "Homebrew: Installing Homebrew"
 
-  # Ensure Homebrew is in PATH if already installed (critical for non-login shells)
-  # This must run BEFORE command_exists check, as PATH might not include /opt/homebrew/bin
-  if [[ -f "/opt/homebrew/bin/brew" ]]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || true
-    hash -r
-  elif [[ -f "/usr/local/bin/brew" ]]; then
-    eval "$(/usr/local/bin/brew shellenv)" 2>/dev/null || true
-    hash -r
-  fi
+  # Ensure Homebrew is in PATH if already installed
+  # Critical for non-login shells (e.g., bash <(curl ...)) where .zprofile isn't sourced
+  ensure_brew_in_path
 
   # Check if Homebrew is already installed
   if command_exists brew; then
     log_success "Homebrew is already installed"
-    local brew_version
-    brew_version="$(brew --version | head -n1)"
-    log_info "$brew_version"
+    log_info "$(brew --version | head -n1)"
 
     # Update Homebrew
     log_info "Updating Homebrew..."
@@ -34,11 +48,10 @@ module_homebrew() {
       brew update || log_warning "Failed to update Homebrew"
     fi
 
-    # Clear hash table in case brew commands were cached as "not found"
-    hash -r
     return 0
   fi
 
+  # Fresh installation
   log_info "Installing Homebrew from $HOMEBREW_INSTALL_URL"
 
   if [[ "$DRY_RUN" == "true" ]]; then
@@ -46,43 +59,37 @@ module_homebrew() {
     return 0
   fi
 
-  # Download and execute Homebrew installation script
   /bin/bash -c "$(curl -fsSL "$HOMEBREW_INSTALL_URL")" || {
     log_error_exit "Failed to install Homebrew"
   }
 
   log_success "Homebrew installed successfully"
 
-  # Add Homebrew to PATH for current session
+  # Add to PATH for current session
   log_info "Configuring Homebrew in PATH..."
-
-  if [[ -f "$HOMEBREW_PREFIX/bin/brew" ]]; then
-    eval "$("$HOMEBREW_PREFIX/bin/brew" shellenv)" || {
-      log_warning "Failed to eval brew shellenv"
-    }
+  if ! ensure_brew_in_path; then
+    log_error_exit "Homebrew binary not found after installation"
   fi
-
-  # Clear hash table after PATH update
-  hash -r
 
   # Verify installation
   if command_exists brew; then
-    local brew_version
-    brew_version="$(brew --version | head -n1)"
-    log_success "$brew_version is now available"
+    log_success "$(brew --version | head -n1) is now available"
   else
     log_error_exit "Homebrew not found after installation"
   fi
 
-  # Add Homebrew to shell profile (zsh)
-  local zshrc="$HOME/.zprofile"
-  local brew_init_line='eval "$(/opt/homebrew/bin/brew shellenv)"'
+  # Add to shell profile for future sessions
+  local brew_path
+  brew_path="$(get_brew_path)"
+  local zprofile="$HOME/.zprofile"
 
-  if [[ ! -f "$zshrc" ]] || ! grep -q "brew shellenv" "$zshrc"; then
-    log_info "Adding Homebrew initialization to $zshrc"
-    echo "" >> "$zshrc"
-    echo "# Homebrew" >> "$zshrc"
-    echo "$brew_init_line" >> "$zshrc"
+  if [[ ! -f "$zprofile" ]] || ! grep -q "brew shellenv" "$zprofile"; then
+    log_info "Adding Homebrew initialization to $zprofile"
+    {
+      echo ""
+      echo "# Homebrew"
+      echo "eval \"\$($brew_path shellenv)\""
+    } >> "$zprofile"
     log_success "Homebrew added to shell profile"
   fi
 
