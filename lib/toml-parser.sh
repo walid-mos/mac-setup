@@ -26,6 +26,17 @@ get_dasel_major_version() {
 }
 
 # -----------------------------------------------------------------------------
+# Escape key segments containing hyphens for dasel v3
+# In v3, hyphens are treated as subtraction operators, so we must quote them
+# Example: automations.nas-shares.server -> automations."nas-shares".server
+# -----------------------------------------------------------------------------
+escape_key_for_v3() {
+  local key="$1"
+  # Quote any segment that contains a hyphen
+  echo "$key" | sed 's/\([^.]*-[^.]*\)/"\1"/g'
+}
+
+# -----------------------------------------------------------------------------
 # Parse TOML value
 # -----------------------------------------------------------------------------
 parse_toml_value() {
@@ -43,7 +54,9 @@ parse_toml_value() {
   if [[ "$major_ver" == "2" ]]; then
     dasel -f "$file" -r toml "$key" 2>/dev/null || echo ""
   elif [[ "$major_ver" == "3" ]]; then
-    dasel -i toml "$key" < "$file" 2>/dev/null || echo ""
+    local escaped_key
+    escaped_key=$(escape_key_for_v3 "$key")
+    dasel -i toml "$escaped_key" < "$file" 2>/dev/null || echo ""
   else
     log_error "Unsupported dasel version: $major_ver"
     return 1
@@ -71,7 +84,9 @@ parse_toml_array() {
   elif [[ "$major_ver" == "3" ]]; then
     # v3: returns array as ['item1', 'item2', ...], needs parsing
     # Transform: ['stow', 'fzf'] -> stow\nfzf
-    dasel -i toml "$key" < "$file" 2>/dev/null | \
+    local escaped_key
+    escaped_key=$(escape_key_for_v3 "$key")
+    dasel -i toml "$escaped_key" < "$file" 2>/dev/null | \
       tr -d '[]' | \
       tr ',' '\n' | \
       sed "s/^[[:space:]]*'//;s/'[[:space:]]*$//" | \
