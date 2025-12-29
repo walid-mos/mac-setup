@@ -35,7 +35,7 @@ MOUNT_SCRIPT_PATH="$HOME/.local/bin/mount-nas.sh"
 LAUNCHAGENT_LABEL="com.user.nas-automount"
 LAUNCHAGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCHAGENT_LABEL}.plist"
 KEYCHAIN_SERVICE_PREFIX="nas-share"
-DEFAULT_MOUNT_BASE="/Volumes"
+DEFAULT_MOUNT_BASE="$HOME/NAS"
 
 # ============================================================================
 # Standalone Script Detection
@@ -96,7 +96,6 @@ SCRIPT_HEADER
 # Server: ${server}
 # Username: ${username}
 # Mount Base: ${mount_base}
-# Symlink Dir: \$HOME/NAS
 # Shares: ${shares_csv}
 # Generated: $(date -Iseconds)
 # ============================================================================
@@ -107,7 +106,6 @@ set -euo pipefail
 SERVER="${server}"
 USERNAME="${username}"
 MOUNT_BASE="${mount_base}"
-SYMLINK_DIR="\$HOME/NAS"
 SHARES=(${shares_array})
 KEYCHAIN_SERVICE="nas-share-\${SERVER}"
 
@@ -169,24 +167,6 @@ mount_share() {
   fi
 }
 
-# Create symlinks in ~/NAS for easy Finder access
-create_symlinks() {
-  local verbose="${1:-false}"
-
-  mkdir -p "$SYMLINK_DIR"
-
-  for share in "${SHARES[@]}"; do
-    local target="${MOUNT_BASE}/${share}"
-    local link="${SYMLINK_DIR}/${share}"
-
-    # Only create if mount exists and symlink doesn't
-    if [[ -d "$target" ]] && [[ ! -L "$link" ]]; then
-      ln -sf "$target" "$link"
-      [[ "$verbose" == "true" ]] && echo "[OK] Symlink: $SYMLINK_DIR/$share -> $target"
-    fi
-  done
-}
-
 # Main
 main() {
   local verbose=false
@@ -208,9 +188,6 @@ main() {
       ((failed++))
     fi
   done
-
-  # Create symlinks for Finder access
-  create_symlinks "$verbose"
 
   [[ "$verbose" == "true" ]] && echo "[INFO] Mounted: $success, Failed: $failed"
   [[ $failed -eq 0 ]]
@@ -263,21 +240,14 @@ store_keychain_password() {
   return 0
 }
 
-# Prepare mount points in /Volumes (requires sudo once)
+# Prepare mount points
 prepare_mount_points() {
   local mount_base="$1"
   local shares="$2"  # Newline-separated
 
-  # Skip if not using /Volumes
-  if [[ "$mount_base" != "/Volumes" ]]; then
-    mkdir -p "$mount_base"
-    return 0
-  fi
+  log_step "Preparation des points de montage..."
 
-  log_step "Preparation des points de montage dans /Volumes..."
-  log_info "Cette operation necessite les droits administrateur (sudo)"
-
-  [[ "$DRY_RUN" == "true" ]] && { log_info "[DRY RUN] Would create mount points with sudo"; return 0; }
+  [[ "$DRY_RUN" == "true" ]] && { log_info "[DRY RUN] Would create mount points"; return 0; }
 
   # Build list of mount points to create
   local mount_points=()
@@ -286,8 +256,8 @@ prepare_mount_points() {
     mount_points+=("${mount_base}/${share}")
   done <<< "$shares"
 
-  # Create all mount points with a single sudo call
-  if sudo mkdir -p "${mount_points[@]}" && sudo chown "$USER" "${mount_points[@]}"; then
+  # Create all mount points (no sudo needed for ~/NAS)
+  if mkdir -p "${mount_points[@]}"; then
     log_success "Points de montage crees: ${mount_points[*]}"
     return 0
   else
