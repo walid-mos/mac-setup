@@ -4,6 +4,7 @@
 # TOML Parser
 # =============================================================================
 # Parse TOML configuration files using dasel.
+# Supports both dasel v2 and v3 (different CLI syntax).
 # Requires dasel to be installed (handled by script-dependencies module).
 # =============================================================================
 
@@ -19,32 +20,9 @@ has_dasel() {
 # -----------------------------------------------------------------------------
 get_dasel_major_version() {
   local ver
+  # v2 uses --version flag, v3 uses 'version' subcommand
   ver=$(dasel --version 2>/dev/null || dasel version 2>/dev/null)
   echo "$ver" | grep -oE '[0-9]+' | head -1
-}
-
-# -----------------------------------------------------------------------------
-# Run dasel with version-appropriate syntax
-# Usage: run_dasel <file> <selector>
-# -----------------------------------------------------------------------------
-run_dasel() {
-  local file="$1"
-  local selector="$2"
-  local major_ver
-  major_ver=$(get_dasel_major_version)
-
-  if [[ "$major_ver" == "2" ]]; then
-    dasel -f "$file" -r toml "$selector" 2>/dev/null
-    return $?
-  fi
-
-  if [[ "$major_ver" == "3" ]]; then
-    dasel -i toml "$selector" < "$file" 2>/dev/null
-    return $?
-  fi
-
-  log_error "Unsupported dasel version: $major_ver (expected 2 or 3)"
-  return 1
 }
 
 # -----------------------------------------------------------------------------
@@ -59,11 +37,21 @@ parse_toml_value() {
     return 1
   fi
 
-  run_dasel "$file" "$key" || echo ""
+  local major_ver
+  major_ver=$(get_dasel_major_version)
+
+  if [[ "$major_ver" == "2" ]]; then
+    dasel -f "$file" -r toml "$key" 2>/dev/null || echo ""
+  elif [[ "$major_ver" == "3" ]]; then
+    dasel -i toml "$key" < "$file" 2>/dev/null || echo ""
+  else
+    log_error "Unsupported dasel version: $major_ver"
+    return 1
+  fi
 }
 
 # -----------------------------------------------------------------------------
-# Parse TOML array
+# Parse TOML array (returns one element per line)
 # -----------------------------------------------------------------------------
 parse_toml_array() {
   local file="$1"
@@ -74,7 +62,24 @@ parse_toml_array() {
     return 1
   fi
 
-  run_dasel "$file" "$key.all()" | sed "s/^'//" | sed "s/'$//" || echo ""
+  local major_ver
+  major_ver=$(get_dasel_major_version)
+
+  if [[ "$major_ver" == "2" ]]; then
+    # v2: use .all() selector, outputs one per line with quotes
+    dasel -f "$file" -r toml "$key.all()" 2>/dev/null | sed "s/^'//" | sed "s/'$//" || echo ""
+  elif [[ "$major_ver" == "3" ]]; then
+    # v3: returns array as ['item1', 'item2', ...], needs parsing
+    # Transform: ['stow', 'fzf'] -> stow\nfzf
+    dasel -i toml "$key" < "$file" 2>/dev/null | \
+      tr -d '[]' | \
+      tr ',' '\n' | \
+      sed "s/^[[:space:]]*'//;s/'[[:space:]]*$//" | \
+      grep -v '^$' || echo ""
+  else
+    log_error "Unsupported dasel version: $major_ver"
+    return 1
+  fi
 }
 
 # -----------------------------------------------------------------------------
@@ -145,8 +150,9 @@ init_toml_parser() {
     return 1
   fi
 
-  local dasel_ver
+  local dasel_ver major_ver
   dasel_ver=$(dasel --version 2>/dev/null || dasel version 2>/dev/null)
-  log_verbose "Using dasel for TOML parsing (${dasel_ver})"
+  major_ver=$(get_dasel_major_version)
+  log_verbose "Using dasel v${major_ver} for TOML parsing (${dasel_ver})"
   return 0
 }
