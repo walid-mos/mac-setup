@@ -35,7 +35,7 @@ MOUNT_SCRIPT_PATH="$HOME/.local/bin/mount-nas.sh"
 LAUNCHAGENT_LABEL="com.user.nas-automount"
 LAUNCHAGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCHAGENT_LABEL}.plist"
 KEYCHAIN_SERVICE_PREFIX="nas-share"
-DEFAULT_MOUNT_BASE="/Volumes"
+DEFAULT_MOUNT_BASE="$HOME/NAS"
 
 # ============================================================================
 # Standalone Script Detection
