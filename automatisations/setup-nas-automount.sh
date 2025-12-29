@@ -35,7 +35,7 @@ MOUNT_SCRIPT_PATH="$HOME/.local/bin/mount-nas.sh"
 LAUNCHAGENT_LABEL="com.user.nas-automount"
 LAUNCHAGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCHAGENT_LABEL}.plist"
 KEYCHAIN_SERVICE_PREFIX="nas-share"
-DEFAULT_MOUNT_BASE="$HOME/NAS"
+DEFAULT_MOUNT_BASE="/Volumes"
 
 # ============================================================================
 # Standalone Script Detection
@@ -139,9 +139,12 @@ mount_share() {
     return 0
   fi
 
-  # Create mount point if needed
+  # Create mount point if needed (should already exist from setup)
   if [[ ! -d "$mount_point" ]]; then
-    mkdir -p "$mount_point" 2>/dev/null || sudo mkdir -p "$mount_point"
+    mkdir -p "$mount_point" 2>/dev/null || {
+      [[ "$verbose" == "true" ]] && echo "[ERROR] Cannot create mount point: $mount_point"
+      return 1
+    }
   fi
 
   # Get password and mount
@@ -235,6 +238,39 @@ store_keychain_password() {
 
   log_verbose "Credentials stored in Keychain: $service"
   return 0
+}
+
+# Prepare mount points in /Volumes (requires sudo once)
+prepare_mount_points() {
+  local mount_base="$1"
+  local shares="$2"  # Newline-separated
+
+  # Skip if not using /Volumes
+  if [[ "$mount_base" != "/Volumes" ]]; then
+    mkdir -p "$mount_base"
+    return 0
+  fi
+
+  log_step "Preparation des points de montage dans /Volumes..."
+  log_info "Cette operation necessite les droits administrateur (sudo)"
+
+  [[ "$DRY_RUN" == "true" ]] && { log_info "[DRY RUN] Would create mount points with sudo"; return 0; }
+
+  # Build list of mount points to create
+  local mount_points=()
+  while IFS= read -r share; do
+    [[ -z "$share" ]] && continue
+    mount_points+=("${mount_base}/${share}")
+  done <<< "$shares"
+
+  # Create all mount points with a single sudo call
+  if sudo mkdir -p "${mount_points[@]}" && sudo chown "$USER" "${mount_points[@]}"; then
+    log_success "Points de montage crees: ${mount_points[*]}"
+    return 0
+  else
+    log_error "Echec de la creation des points de montage"
+    return 1
+  fi
 }
 
 # ============================================================================
@@ -472,16 +508,19 @@ do_interactive_setup() {
     fi
   fi
 
-  # Step 5: Generate standalone mount script
+  # Step 5: Prepare mount points (sudo for /Volumes)
+  prepare_mount_points "$existing_mount_base" "$selected_shares" || return 1
+
+  # Step 6: Generate standalone mount script
   generate_mount_script "$nas_server" "$nas_username" "$existing_mount_base" "$selected_shares"
 
-  # Step 6: Setup LaunchAgent & sleepwatcher
+  # Step 7: Setup LaunchAgent & sleepwatcher
   create_launchagent
   install_launchagent
   echo ""
   setup_sleepwatcher
 
-  # Step 7: Offer to test
+  # Step 8: Offer to test
   echo ""
   log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   log_info "  Configuration terminee !"
