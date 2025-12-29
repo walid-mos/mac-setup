@@ -15,13 +15,46 @@ has_dasel() {
 }
 
 # -----------------------------------------------------------------------------
+# Get dasel major version (2 or 3)
+# -----------------------------------------------------------------------------
+get_dasel_major_version() {
+  local ver
+  ver=$(dasel --version 2>/dev/null || dasel version 2>/dev/null)
+  echo "$ver" | grep -oE '[0-9]+' | head -1
+}
+
+# -----------------------------------------------------------------------------
+# Run dasel with version-appropriate syntax
+# Usage: run_dasel <file> <selector>
+# -----------------------------------------------------------------------------
+run_dasel() {
+  local file="$1"
+  local selector="$2"
+  local major_ver
+  major_ver=$(get_dasel_major_version)
+
+  if [[ "$major_ver" == "2" ]]; then
+    dasel -f "$file" -r toml "$selector" 2>/dev/null
+    return $?
+  fi
+
+  if [[ "$major_ver" == "3" ]]; then
+    dasel -i toml "$selector" < "$file" 2>/dev/null
+    return $?
+  fi
+
+  log_error "Unsupported dasel version: $major_ver (expected 2 or 3)"
+  return 1
+}
+
+# -----------------------------------------------------------------------------
 # Parse TOML value using dasel
 # -----------------------------------------------------------------------------
 parse_toml_value_with_dasel() {
   local file="$1"
   local key="$2"
 
-  dasel -f "$file" -r toml "$key" 2>/dev/null || echo ""
+  run_dasel "$file" "$key" || echo ""
 }
 
 # -----------------------------------------------------------------------------
@@ -31,7 +64,7 @@ parse_toml_array_with_dasel() {
   local file="$1"
   local key="$2"
 
-  dasel -f "$file" -r toml "$key.all()" 2>/dev/null | sed "s/^'//" | sed "s/'$//" || echo ""
+  run_dasel "$file" "$key.all()" | sed "s/^'//" | sed "s/'$//" || echo ""
 }
 
 # -----------------------------------------------------------------------------
