@@ -275,7 +275,9 @@ main() {
   fi
 
   # Initialize TOML parser (after dasel is installed)
-  init_toml_parser
+  if ! init_toml_parser; then
+    log_error_exit "Failed to initialize TOML parser. Cannot continue."
+  fi
 
   # Curl Tools (Claude CLI, fnm, pnpm)
   ((total_modules++))
