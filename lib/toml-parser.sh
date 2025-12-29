@@ -27,13 +27,13 @@ get_dasel_major_version() {
 
 # -----------------------------------------------------------------------------
 # Escape key segments containing hyphens for dasel v3
-# In v3, hyphens are treated as subtraction operators, so we must quote them
-# Example: automations.nas-shares.server -> automations."nas-shares".server
+# In v3, hyphens are treated as subtraction operators, so we use get() function
+# Example: automations.setup-react-native-ios -> automations.get("setup-react-native-ios")
 # -----------------------------------------------------------------------------
 escape_key_for_v3() {
   local key="$1"
-  # Quote any segment that contains a hyphen
-  echo "$key" | sed 's/\([^.]*-[^.]*\)/"\1"/g'
+  # Convert each hyphenated segment to get("segment") syntax
+  echo "$key" | sed 's/\([^.]*-[^.]*\)/get("\1")/g'
 }
 
 # -----------------------------------------------------------------------------
