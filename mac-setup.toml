@@ -185,6 +185,8 @@ igocreate-hermes = "clients/igocreate"
 [repositories.repo_overrides]
 nextnode-front = "SaaS"
 yasmine = "SaaS"
+syneva = "SaaS"
+kicked = "SaaS"
 florist-bouquet-preview = "clients/fleurs-aujourdhui"
 # Add more exceptions as needed:
 # my-special-project = "clients/autre-client"

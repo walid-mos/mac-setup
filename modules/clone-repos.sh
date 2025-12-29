@@ -533,7 +533,7 @@ module_clone_repos() {
 
         if ask_yes_no "Authenticate with GitLab now?" "y"; then
           log_info "Starting GitLab authentication..."
-          glab auth login --hostname gitlab.com --git-protocol https < /dev/tty || {
+          glab auth login < /dev/tty || {
             log_error "GitLab authentication failed - skipping GitLab repositories"
             log_info "You can authenticate manually later with: glab auth login"
             break

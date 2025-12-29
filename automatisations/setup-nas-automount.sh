@@ -50,7 +50,8 @@ url_encode() {
 # Get password from macOS Keychain
 get_keychain_password() {
   local service="$1"
-  security find-generic-password -w -s "$service" 2>/dev/null || echo ""
+  local account="$2"
+  security find-generic-password -w -s "$service" -a "$account" 2>/dev/null || echo ""
 }
 
 # Store password in macOS Keychain
@@ -61,12 +62,13 @@ store_keychain_password() {
   local service="${KEYCHAIN_SERVICE_PREFIX}-${server}"
 
   # Delete existing entry if present
-  security delete-generic-password -s "$service" 2>/dev/null || true
+  security delete-generic-password -s "$service" -a "$username" 2>/dev/null || true
 
   # Add new entry
   local error_output
   if ! error_output=$(security add-generic-password \
     -s "$service" \
+    -a "$username" \
     -l "NAS SMB mount for $server" \
     -w "$password" \
     -U 2>&1); then
@@ -136,12 +138,12 @@ mount_all_shares() {
   # Get password from Keychain
   local service="${KEYCHAIN_SERVICE_PREFIX}-${server}"
   local password
-  password=$(get_keychain_password "$service")
+  password=$(get_keychain_password "$service" "$username")
 
   if [[ -z "$password" ]]; then
     log_error "Could not retrieve NAS password from Keychain"
-    log_error "Expected service name: $service"
-    log_info "Store password with: security add-generic-password -s '$service' -w 'PASSWORD'"
+    log_error "Expected service name: $service, account: $username"
+    log_info "Store password with: security add-generic-password -s '$service' -a '$username' -w 'PASSWORD'"
     return 1
   fi
 
@@ -461,7 +463,7 @@ do_interactive_setup() {
       log_success "Identifiants stockés"
     else
       log_error "Échec du stockage"
-      log_info "Essayez: security add-generic-password -s 'nas-share-$nas_server' -w 'PASSWORD'"
+      log_info "Essayez: security add-generic-password -s 'nas-share-$nas_server' -a '$nas_username' -w 'PASSWORD'"
       return 1
     fi
   fi
