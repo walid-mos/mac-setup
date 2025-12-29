@@ -28,15 +28,15 @@ get_dasel_major_version() {
 # -----------------------------------------------------------------------------
 # Escape key segments for dasel v3 compatibility
 # - Hyphens are treated as subtraction operators, so use get("key") function
-# - Array indices [N] must be converted to index(N)
+# - Array indices .[N] must lose the dot: [N] (v3 syntax)
 # Examples:
 #   automations.setup-react-native-ios -> automations.get("setup-react-native-ios")
-#   mail.accounts.[0].name -> mail.accounts.index(0).name
+#   mail.accounts.[0].name -> mail.accounts[0].name
 # -----------------------------------------------------------------------------
 escape_key_for_v3() {
   local key="$1"
-  # Convert [N] to index(N) for v3 array access
-  key=$(echo "$key" | sed 's/\.\[\([0-9]*\)\]/\.index(\1)/g')
+  # Convert .[N] to [N] for v3 array access (remove dot before bracket)
+  key=$(echo "$key" | sed 's/\.\[/[/g')
   # Convert each hyphenated segment to get("segment") syntax
   echo "$key" | sed 's/\([^.]*-[^.]*\)/get("\1")/g'
 }
