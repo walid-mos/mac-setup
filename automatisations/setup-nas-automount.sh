@@ -167,6 +167,25 @@ mount_share() {
   fi
 }
 
+# Create symlinks in ~/NAS for easy Finder access
+create_symlinks() {
+  local verbose="${1:-false}"
+  local symlink_dir="$HOME/NAS"
+
+  mkdir -p "$symlink_dir"
+
+  for share in "${SHARES[@]}"; do
+    local target="${MOUNT_BASE}/${share}"
+    local link="${symlink_dir}/${share}"
+
+    # Only create if mount exists and symlink doesn't
+    if [[ -d "$target" ]] && [[ ! -L "$link" ]]; then
+      ln -sf "$target" "$link"
+      [[ "$verbose" == "true" ]] && echo "[OK] Symlink: ~/NAS/$share -> $target"
+    fi
+  done
+}
+
 # Main
 main() {
   local verbose=false
@@ -188,6 +207,9 @@ main() {
       ((failed++))
     fi
   done
+
+  # Create symlinks for Finder access
+  create_symlinks "$verbose"
 
   [[ "$verbose" == "true" ]] && echo "[INFO] Mounted: $success, Failed: $failed"
   [[ $failed -eq 0 ]]
@@ -532,6 +554,14 @@ do_interactive_setup() {
       echo ""
       log_subsection "Test du montage"
       "$MOUNT_SCRIPT_PATH" --verbose
+
+      # Open ~/NAS in Finder and prompt to add to favorites
+      echo ""
+      log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      log_info "  Ajoutez ~/NAS aux favoris Finder"
+      log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      log_info "Glissez le dossier NAS vers 'Favoris' dans la sidebar"
+      open "$HOME/NAS"
     fi
   fi
 }
