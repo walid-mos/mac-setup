@@ -96,6 +96,7 @@ SCRIPT_HEADER
 # Server: ${server}
 # Username: ${username}
 # Mount Base: ${mount_base}
+# Symlink Dir: \$HOME/NAS
 # Shares: ${shares_csv}
 # Generated: $(date -Iseconds)
 # ============================================================================
@@ -106,6 +107,7 @@ set -euo pipefail
 SERVER="${server}"
 USERNAME="${username}"
 MOUNT_BASE="${mount_base}"
+SYMLINK_DIR="\$HOME/NAS"
 SHARES=(${shares_array})
 KEYCHAIN_SERVICE="nas-share-\${SERVER}"
 
@@ -170,18 +172,17 @@ mount_share() {
 # Create symlinks in ~/NAS for easy Finder access
 create_symlinks() {
   local verbose="${1:-false}"
-  local symlink_dir="$HOME/NAS"
 
-  mkdir -p "$symlink_dir"
+  mkdir -p "$SYMLINK_DIR"
 
   for share in "${SHARES[@]}"; do
     local target="${MOUNT_BASE}/${share}"
-    local link="${symlink_dir}/${share}"
+    local link="${SYMLINK_DIR}/${share}"
 
     # Only create if mount exists and symlink doesn't
     if [[ -d "$target" ]] && [[ ! -L "$link" ]]; then
       ln -sf "$target" "$link"
-      [[ "$verbose" == "true" ]] && echo "[OK] Symlink: ~/NAS/$share -> $target"
+      [[ "$verbose" == "true" ]] && echo "[OK] Symlink: $SYMLINK_DIR/$share -> $target"
     fi
   done
 }
