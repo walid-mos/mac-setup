@@ -307,72 +307,7 @@ automation_setup_react_native_ios() {
   fi
 
   # ----------------------------------
-  # Step 8: Configure shell environment
-  # ----------------------------------
-  log_step "Configuration de l'environnement shell..."
-
-  local zshenv_file="$HOME/.zshenv"
-  local fnm_init_line='eval "$(fnm env --use-on-cd --shell zsh)"'
-
-  if [[ -f "$zshenv_file" ]] && grep -q "fnm env" "$zshenv_file"; then
-    log_success "~/.zshenv contient déjà la configuration fnm"
-  else
-    log_info "Ajout de l'initialisation fnm à ~/.zshenv (requis pour Xcode)"
-
-    if [[ "$DRY_RUN" == "true" ]]; then
-      log_info "[DRY RUN] Would add fnm initialization to ~/.zshenv"
-    else
-      # Create .zshenv if it doesn't exist
-      touch "$zshenv_file"
-
-      # Add fnm initialization
-      {
-        echo ""
-        echo "# fnm initialization (for Xcode compatibility)"
-        echo "$fnm_init_line"
-      } >> "$zshenv_file"
-
-      log_success "Configuration ajoutée à ~/.zshenv"
-      log_info "La configuration sera active au prochain démarrage de shell"
-    fi
-  fi
-
-  # ----------------------------------
-  # Step 9: Create .xcode.env template
-  # ----------------------------------
-  log_step "Création du template .xcode.env..."
-
-  local xcode_env_template="$HOME/.xcode.env.template"
-
-  if [[ -f "$xcode_env_template" ]]; then
-    log_success "Template .xcode.env existe déjà"
-  else
-    if [[ "$DRY_RUN" == "true" ]]; then
-      log_info "[DRY RUN] Would create .xcode.env template at $xcode_env_template"
-    else
-      cat > "$xcode_env_template" << 'EOF'
-# .xcode.env
-# This file is used by Xcode to locate Node.js for React Native builds
-# Copy this file to the root of your React Native project as ".xcode.env"
-
-# Specify the path to your Node.js binary
-# Option 1: Using fnm (recommended)
-export NODE_BINARY=$(command -v node)
-
-# Option 2: Using absolute path
-# export NODE_BINARY="$HOME/.local/share/fnm/node-versions/v20.19.4/installation/bin/node"
-
-# Option 3: Using nvm
-# export NODE_BINARY="$HOME/.nvm/versions/node/v20.19.4/bin/node"
-EOF
-
-      log_success "Template créé: $xcode_env_template"
-      log_info "Copiez ce fichier dans vos projets React Native comme '.xcode.env'"
-    fi
-  fi
-
-  # ----------------------------------
-  # Step 10: Check iOS Simulators
+  # Step 8: Check iOS Simulators
   # ----------------------------------
   log_step "Vérification des simulateurs iOS..."
 
@@ -386,7 +321,7 @@ EOF
   fi
 
   # ----------------------------------
-  # Step 11: Verification summary
+  # Step 9: Verification summary
   # ----------------------------------
   log_step "Résumé de la vérification..."
 
@@ -445,7 +380,7 @@ EOF
   fi
 
   # ----------------------------------
-  # Step 12: Next steps
+  # Step 10: Next steps
   # ----------------------------------
   log_success "Configuration React Native iOS terminée"
   echo ""
