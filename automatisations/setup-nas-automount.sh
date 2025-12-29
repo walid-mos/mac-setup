@@ -392,13 +392,24 @@ install_launchagent() {
 
   [[ "$DRY_RUN" == "true" ]] && { log_info "[DRY RUN] Would load: $LAUNCHAGENT_PLIST"; return 0; }
 
-  launchctl list 2>/dev/null | grep -q "$LAUNCHAGENT_LABEL" && \
+  # Unload if already loaded
+  if launchctl list 2>/dev/null | grep -q "$LAUNCHAGENT_LABEL"; then
+    log_info "LaunchAgent deja charge, rechargement..."
     launchctl unload "$LAUNCHAGENT_PLIST" 2>/dev/null || true
+  fi
 
-  if launchctl load "$LAUNCHAGENT_PLIST" 2>/dev/null; then
+  # Load the LaunchAgent
+  local load_output
+  if load_output=$(launchctl load "$LAUNCHAGENT_PLIST" 2>&1); then
     log_success "LaunchAgent installe et active"
+    # Verify it's actually running
+    if launchctl list 2>/dev/null | grep -q "$LAUNCHAGENT_LABEL"; then
+      log_success "LaunchAgent verifie: en cours d'execution"
+    else
+      log_warning "LaunchAgent charge mais pas encore actif"
+    fi
   else
-    log_error "Echec du chargement du LaunchAgent"
+    log_error "Echec du chargement du LaunchAgent: $load_output"
     return 1
   fi
 }
