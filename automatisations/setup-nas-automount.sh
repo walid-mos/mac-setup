@@ -43,7 +43,8 @@ DEFAULT_WAIT_TIMEOUT=60
 
 # Check if nasreco is available (requires stow dotfiles to be installed)
 check_nasreco_available() {
-  if /bin/zsh -i -c 'type nasreco &>/dev/null' 2>/dev/null; then
+  # Use MAC_SETUP_RUNNING to prevent .zshrc from running fastfetch
+  if MAC_SETUP_RUNNING=1 /bin/zsh -i -c 'type nasreco &>/dev/null' 2>/dev/null; then
     return 0
   else
     return 1
@@ -68,13 +69,19 @@ store_keychain_password() {
   security delete-generic-password -s "$service" 2>/dev/null || true
 
   # Add new entry (nasreco uses -s service only, not -a account)
-  security add-generic-password \
+  local error_output
+  if ! error_output=$(security add-generic-password \
     -s "$service" \
     -l "NAS SMB mount for $server" \
     -w "$password" \
-    -U 2>/dev/null
+    -U 2>&1); then
+    log_error "Failed to store password in Keychain: $error_output"
+    log_error "Service name: $service"
+    return 1
+  fi
 
   log_verbose "Credentials stored in Keychain: $service"
+  return 0
 }
 
 # List available shares on SMB server (for interactive selection)
@@ -195,9 +202,8 @@ create_launchagent() {
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string>
-    <string>-i</string>
     <string>-c</string>
-    <string>nasreco --quiet</string>
+    <string>source ~/.zshrc && nasreco --quiet</string>
   </array>
 
   <key>RunAtLoad</key>
@@ -290,7 +296,7 @@ setup_sleepwatcher() {
 # Reconnect NAS shares after wake from sleep
 sleep 3
 if ping -c 1 -W 2 "${NAS_SERVER:-192.168.1.2}" &>/dev/null; then
-    /bin/zsh -i -c 'nasreco --quiet' &>/dev/null
+    /bin/zsh -c 'source ~/.zshrc && nasreco --quiet' &>/dev/null
 fi
 EOF
 
@@ -384,8 +390,8 @@ test_mount() {
     return 1
   fi
 
-  # Call nasreco
-  if /bin/zsh -i -c 'nasreco --verbose'; then
+  # Call nasreco (MAC_SETUP_RUNNING prevents fastfetch in .zshrc)
+  if MAC_SETUP_RUNNING=1 /bin/zsh -i -c 'nasreco --verbose'; then
     log_success "Partages montés avec succès"
     return 0
   else
@@ -477,8 +483,13 @@ do_interactive_setup() {
   if [[ "$DRY_RUN" == "true" ]]; then
     log_info "[DRY RUN] Would store credentials in Keychain"
   else
-    store_keychain_password "$nas_server" "$nas_username" "$nas_password"
-    log_success "Identifiants stockés dans le Keychain"
+    if store_keychain_password "$nas_server" "$nas_username" "$nas_password"; then
+      log_success "Identifiants stockés dans le Keychain"
+    else
+      log_error "Échec du stockage des identifiants"
+      log_info "Essayez manuellement: security add-generic-password -s 'nas-share-$nas_server' -w 'VOTRE_MOT_DE_PASSE'"
+      return 1
+    fi
   fi
 
   # Step 5: Update TOML
@@ -524,7 +535,7 @@ automation_setup_nas_automount() {
     if [[ "$arg" == "--mount-only" ]]; then
       # Just call nasreco
       if check_nasreco_available; then
-        /bin/zsh -i -c 'nasreco --quiet'
+        MAC_SETUP_RUNNING=1 /bin/zsh -i -c 'nasreco --quiet'
         return $?
       else
         log_error "nasreco non disponible"
