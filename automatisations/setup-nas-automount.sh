@@ -2,16 +2,12 @@
 
 # ============================================================================
 # NAS Auto-Mount Setup
-# Configures automatic mounting of SMB/NAS shares using nasreco (from stow dotfiles)
-#
-# ARCHITECTURE:
-# This script handles SETUP only (credentials, LaunchAgent, sleepwatcher).
-# Actual mounting is delegated to 'nasreco' function (installed via stow dotfiles).
+# Configures automatic mounting of SMB/NAS shares using mount_smbfs directly.
+# No external dependencies (no nasreco, no subshells).
 #
 # SECURITY NOTICE:
 # - Passwords are stored ONLY in macOS Keychain (AES-256-GCM encryption)
 # - Passwords are NEVER written to TOML files, logs, or temporary files
-# - nasreco retrieves credentials from Keychain at mount time
 # ============================================================================
 
 set -euo pipefail
@@ -34,20 +30,20 @@ fi
 LAUNCHAGENT_LABEL="com.user.nas-automount"
 LAUNCHAGENT_PLIST="$HOME/Library/LaunchAgents/${LAUNCHAGENT_LABEL}.plist"
 KEYCHAIN_SERVICE_PREFIX="nas-share"
-DEFAULT_MOUNT_BASE="$HOME/NAS"
-DEFAULT_WAIT_TIMEOUT=60
+DEFAULT_MOUNT_BASE="/Volumes"
 
 # ============================================================================
-# Helper Functions
+# Mount Functions (replaces nasreco - no subshells needed)
 # ============================================================================
 
-# Check if nasreco is available (requires stow dotfiles to be installed)
-check_nasreco_available() {
-  # Use MAC_SETUP_RUNNING to prevent .zshrc from running fastfetch
-  if MAC_SETUP_RUNNING=1 /bin/zsh -i -c 'type nasreco &>/dev/null' 2>/dev/null; then
-    return 0
+# URL-encode a string for SMB URLs
+url_encode() {
+  local string="$1"
+  if command -v perl &>/dev/null; then
+    perl -MURI::Escape -e 'print uri_escape($ARGV[0]);' "$string"
   else
-    return 1
+    # Basic encoding for common special chars
+    echo "$string" | sed 's/%/%25/g; s/ /%20/g; s/!/%21/g; s/"/%22/g; s/#/%23/g; s/\$/%24/g; s/&/%26/g; s/'\''/%27/g; s/(/%28/g; s/)/%29/g; s/*/%2A/g; s/+/%2B/g; s/,/%2C/g; s/:/%3A/g; s/;/%3B/g; s/=/%3D/g; s/?/%3F/g; s/@/%40/g'
   fi
 }
 
@@ -57,18 +53,17 @@ get_keychain_password() {
   security find-generic-password -w -s "$service" 2>/dev/null || echo ""
 }
 
-# Store password in macOS Keychain (format compatible with nasreco)
+# Store password in macOS Keychain
 store_keychain_password() {
   local server="$1"
   local username="$2"
   local password="$3"
-
   local service="${KEYCHAIN_SERVICE_PREFIX}-${server}"
 
-  # Delete existing entry if present (to update)
+  # Delete existing entry if present
   security delete-generic-password -s "$service" 2>/dev/null || true
 
-  # Add new entry (nasreco uses -s service only, not -a account)
+  # Add new entry
   local error_output
   if ! error_output=$(security add-generic-password \
     -s "$service" \
@@ -76,7 +71,6 @@ store_keychain_password() {
     -w "$password" \
     -U 2>&1); then
     log_error "Failed to store password in Keychain: $error_output"
-    log_error "Service name: $service"
     return 1
   fi
 
@@ -84,7 +78,114 @@ store_keychain_password() {
   return 0
 }
 
-# List available shares on SMB server (for interactive selection)
+# Mount a single SMB share
+mount_single_share() {
+  local server="$1"
+  local share="$2"
+  local username="$3"
+  local password="$4"
+  local mount_base="${5:-/Volumes}"
+
+  local mount_point="${mount_base}/${share}"
+
+  # Check if already mounted
+  if mount | grep -q " on ${mount_point} "; then
+    log_verbose "Already mounted: $share"
+    return 0
+  fi
+
+  # Create mount point if needed
+  if [[ ! -d "$mount_point" ]]; then
+    mkdir -p "$mount_point" 2>/dev/null || sudo mkdir -p "$mount_point"
+  fi
+
+  # URL-encode password
+  local encoded_password
+  encoded_password=$(url_encode "$password")
+
+  # Mount using mount_smbfs
+  local smb_url="//${username}:${encoded_password}@${server}/${share}"
+
+  if mount_smbfs "$smb_url" "$mount_point" 2>/dev/null; then
+    log_success "Mounted: $share -> $mount_point"
+    return 0
+  else
+    log_error "Failed to mount: $share"
+    # Cleanup empty mount point
+    rmdir "$mount_point" 2>/dev/null || true
+    return 1
+  fi
+}
+
+# Mount all configured shares
+mount_all_shares() {
+  local verbose="${1:-false}"
+
+  # Read config from TOML
+  local server username mount_base shares_raw
+  server=$(parse_toml_value "$TOML_CONFIG" "automations.nas-shares.server" 2>/dev/null | tr -d "'\"")
+  username=$(parse_toml_value "$TOML_CONFIG" "automations.nas-shares.username" 2>/dev/null | tr -d "'\"")
+  mount_base=$(parse_toml_value "$TOML_CONFIG" "automations.nas-shares.mount_base" 2>/dev/null | tr -d "'\"")
+  mount_base="${mount_base:-/Volumes}"
+
+  if [[ -z "$server" ]] || [[ -z "$username" ]]; then
+    log_error "NAS configuration not found in TOML"
+    return 1
+  fi
+
+  # Get password from Keychain
+  local service="${KEYCHAIN_SERVICE_PREFIX}-${server}"
+  local password
+  password=$(get_keychain_password "$service")
+
+  if [[ -z "$password" ]]; then
+    log_error "Could not retrieve NAS password from Keychain"
+    log_error "Expected service name: $service"
+    log_info "Store password with: security add-generic-password -s '$service' -w 'PASSWORD'"
+    return 1
+  fi
+
+  # Check server reachability
+  if ! ping -c 1 -W 2 "$server" &>/dev/null; then
+    [[ "$verbose" == "true" ]] && log_warning "Server unreachable: $server"
+    return 1
+  fi
+
+  # Get shares list from TOML
+  local shares
+  shares=$(parse_toml_array "$TOML_CONFIG" "automations.nas-shares.shares" 2>/dev/null | tr -d "'\"")
+
+  if [[ -z "$shares" ]]; then
+    log_error "No shares configured in TOML"
+    return 1
+  fi
+
+  [[ "$verbose" == "true" ]] && log_info "NAS Server: $server"
+  [[ "$verbose" == "true" ]] && log_info "Username: $username"
+  [[ "$verbose" == "true" ]] && log_info "Shares: $(echo "$shares" | tr '\n' ' ')"
+
+  # Mount each share
+  local success=0
+  local failed=0
+  while IFS= read -r share; do
+    [[ -z "$share" ]] && continue
+    if mount_single_share "$server" "$share" "$username" "$password" "$mount_base"; then
+      ((success++))
+    else
+      ((failed++))
+    fi
+  done <<< "$shares"
+
+  [[ "$verbose" == "true" ]] && log_info "Mounted: $success, Failed: $failed"
+
+  [[ $failed -eq 0 ]]
+}
+
+# ============================================================================
+# SMB Discovery Functions
+# ============================================================================
+
+# List available shares on SMB server
 list_smb_shares() {
   local server="$1"
   local username="$2"
@@ -92,38 +193,23 @@ list_smb_shares() {
 
   log_step "Découverte des partages disponibles sur $server..." >&2
 
-  # Remove smb:// prefix if present
   server="${server#smb://}"
   server="${server#//}"
 
-  # Verify server is reachable
   if ! ping -c 1 -W 2 "$server" &>/dev/null; then
     log_error "Serveur inaccessible: $server" >&2
     return 1
   fi
 
-  # URL-encode password
   local encoded_password
-  if command_exists perl; then
-    encoded_password=$(perl -MURI::Escape -e 'print uri_escape($ARGV[0]);' "$password")
-  else
-    encoded_password="$password"
-  fi
+  encoded_password=$(url_encode "$password")
 
-  # List shares using smbutil
   local smbutil_output
-  if [[ -n "$password" ]]; then
-    smbutil_output=$(smbutil view "//${username}:${encoded_password}@${server}" 2>&1)
-  else
-    smbutil_output=$(smbutil view "//${server}" 2>&1)
-  fi
-
-  if [[ $? -ne 0 ]]; then
+  smbutil_output=$(smbutil view "//${username}:${encoded_password}@${server}" 2>&1) || {
     log_error "Impossible de se connecter au serveur SMB: $server" >&2
     return 1
-  fi
+  }
 
-  # Extract share names
   local shares
   shares=$(echo "$smbutil_output" | grep "Disk" | awk '{print $1}' | grep -v "^$")
 
@@ -143,54 +229,42 @@ select_shares_interactive() {
 
   log_subsection "Sélection interactive des partages" >&2
 
-  if ! command_exists fzf; then
-    log_error "fzf n'est pas installé (requis pour la sélection interactive)" >&2
+  if ! command -v fzf &>/dev/null; then
+    log_error "fzf n'est pas installé" >&2
     return 1
   fi
 
   local available_shares
-  if ! available_shares=$(list_smb_shares "$server" "$username" "$password" 2>&2); then
-    return 1
-  fi
+  available_shares=$(list_smb_shares "$server" "$username" "$password") || return 1
 
   local share_count
   share_count=$(echo "$available_shares" | wc -l | xargs)
   log_success "$share_count partages découverts" >&2
-
-  echo "" >&2
-  log_info "Partages disponibles sur $server :" >&2
-  echo "$available_shares" | sed 's/^/  - /' >&2
-  echo "" >&2
 
   local selected
   selected=$(echo "$available_shares" | fzf \
     --multi \
     --height=60% \
     --border \
-    --prompt="Sélectionnez les partages (TAB pour sélectionner, ENTER pour confirmer): " \
-    --header="$share_count partages disponibles sur $server" \
-    --preview="echo 'Sera monté dans: ~/NAS/{}'" \
-    --preview-window=down:3:wrap)
+    --prompt="Sélectionnez les partages (TAB pour multi, ENTER pour confirmer): " \
+    --header="$share_count partages sur $server")
 
-  if [[ -z "$selected" ]]; then
-    log_warning "Aucun partage sélectionné" >&2
-    return 1
-  fi
-
+  [[ -z "$selected" ]] && return 1
   echo "$selected"
 }
 
-# Create LaunchAgent that calls nasreco
+# ============================================================================
+# LaunchAgent & Sleepwatcher
+# ============================================================================
+
 create_launchagent() {
   log_step "Création du LaunchAgent..."
 
-  if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would create: $LAUNCHAGENT_PLIST"
-    return 0
-  fi
+  [[ "$DRY_RUN" == "true" ]] && { log_info "[DRY RUN] Would create: $LAUNCHAGENT_PLIST"; return 0; }
 
   mkdir -p "$HOME/Library/LaunchAgents"
 
+  # LaunchAgent calls THIS script with --mount flag (no subshells!)
   cat > "$LAUNCHAGENT_PLIST" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -201,9 +275,8 @@ create_launchagent() {
 
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/zsh</string>
-    <string>-c</string>
-    <string>source ~/.zshrc && nasreco --quiet</string>
+    <string>${SCRIPT_DIR}/setup-nas-automount.sh</string>
+    <string>--mount</string>
   </array>
 
   <key>RunAtLoad</key>
@@ -230,264 +303,165 @@ EOF
   log_success "LaunchAgent créé: $LAUNCHAGENT_PLIST"
 }
 
-# Install and load LaunchAgent
 install_launchagent() {
   log_step "Installation du LaunchAgent..."
 
-  if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would load: $LAUNCHAGENT_PLIST"
-    return 0
-  fi
+  [[ "$DRY_RUN" == "true" ]] && { log_info "[DRY RUN] Would load: $LAUNCHAGENT_PLIST"; return 0; }
 
-  # Unload if already loaded
-  if launchctl list 2>/dev/null | grep -q "$LAUNCHAGENT_LABEL"; then
-    log_verbose "Déchargement de l'ancien LaunchAgent..."
+  launchctl list 2>/dev/null | grep -q "$LAUNCHAGENT_LABEL" && \
     launchctl unload "$LAUNCHAGENT_PLIST" 2>/dev/null || true
-  fi
 
-  # Load new LaunchAgent
   if launchctl load "$LAUNCHAGENT_PLIST" 2>/dev/null; then
     log_success "LaunchAgent installé et activé"
-    return 0
   else
     log_error "Échec du chargement du LaunchAgent"
     return 1
   fi
 }
 
-# Setup sleepwatcher for wake reconnection
 setup_sleepwatcher() {
-  log_step "Configuration de sleepwatcher (reconnexion au réveil)..."
+  log_step "Configuration de sleepwatcher..."
 
-  # Check if sleepwatcher is installed
-  if ! command_exists sleepwatcher; then
+  if ! command -v sleepwatcher &>/dev/null; then
     log_info "sleepwatcher n'est pas installé"
+    [[ "$DRY_RUN" == "true" ]] && return 0
 
-    if [[ "$DRY_RUN" == "true" ]]; then
-      log_info "[DRY RUN] Would prompt to install sleepwatcher"
-      return 0
-    fi
-
-    read -r -p "Voulez-vous installer sleepwatcher pour la reconnexion automatique au réveil ? (O/n): " install_sw
-
+    read -r -p "Installer sleepwatcher pour reconnexion au réveil ? (O/n): " install_sw
     if [[ -z "$install_sw" ]] || [[ "$install_sw" =~ ^[oOyY]$ ]]; then
-      log_info "Installation de sleepwatcher..."
       brew install sleepwatcher
       brew services start sleepwatcher
       log_success "sleepwatcher installé"
     else
-      log_info "sleepwatcher non installé - les partages ne seront pas reconnectés au réveil"
       return 0
     fi
-  else
-    log_verbose "sleepwatcher déjà installé"
   fi
 
-  # Create wakeup script
   local wakeup_script="$HOME/.wakeup"
+  [[ "$DRY_RUN" == "true" ]] && { log_info "[DRY RUN] Would create: $wakeup_script"; return 0; }
 
-  if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would create: $wakeup_script"
-    return 0
-  fi
-
-  cat > "$wakeup_script" << 'EOF'
+  # Wakeup script calls THIS script directly (no subshells!)
+  cat > "$wakeup_script" << EOF
 #!/bin/bash
 # Reconnect NAS shares after wake from sleep
 sleep 3
-if ping -c 1 -W 2 "${NAS_SERVER:-192.168.1.2}" &>/dev/null; then
-    /bin/zsh -c 'source ~/.zshrc && nasreco --quiet' &>/dev/null
-fi
+${SCRIPT_DIR}/setup-nas-automount.sh --mount 2>/dev/null
 EOF
 
   chmod +x "$wakeup_script"
   log_success "Script de réveil créé: $wakeup_script"
 
-  # Start sleepwatcher if not running
-  if ! pgrep -q sleepwatcher; then
-    brew services start sleepwatcher 2>/dev/null || true
-  fi
-
-  log_success "sleepwatcher configuré pour la reconnexion au réveil"
+  pgrep -q sleepwatcher || brew services start sleepwatcher 2>/dev/null || true
+  log_success "sleepwatcher configuré"
 }
 
-# Update TOML configuration with NAS settings
+# ============================================================================
+# TOML Config Management
+# ============================================================================
+
 update_toml_config() {
   local server="$1"
   local username="$2"
   local shares="$3"
+  local mount_base="${4:-/Volumes}"
 
   log_step "Mise à jour de la configuration TOML..."
 
-  if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would update $TOML_CONFIG with NAS configuration"
-    return 0
-  fi
+  [[ "$DRY_RUN" == "true" ]] && { log_info "[DRY RUN] Would update TOML"; return 0; }
 
-  # Check if section already exists
-  if grep -q "\[automations.nas-shares\]" "$TOML_CONFIG" 2>/dev/null; then
+  grep -q "\[automations.nas-shares\]" "$TOML_CONFIG" 2>/dev/null && {
     log_warning "Section [automations.nas-shares] existe déjà"
     return 0
-  fi
+  }
 
-  # Convert shares to TOML array
   local shares_array="["
   local first=true
   while IFS= read -r share; do
-    if [[ "$first" == "true" ]]; then
-      shares_array+="\"$share\""
-      first=false
-    else
-      shares_array+=", \"$share\""
-    fi
+    [[ -z "$share" ]] && continue
+    [[ "$first" == "true" ]] && { shares_array+="\"$share\""; first=false; } || shares_array+=", \"$share\""
   done <<< "$shares"
   shares_array+="]"
 
-  # Append to TOML
   cat >> "$TOML_CONFIG" << EOF
 
 # -----------------------------------------------------------------------------
 # NAS Auto-Mount Configuration
-# Mounting handled by nasreco (from stow dotfiles)
 # -----------------------------------------------------------------------------
 [automations.nas-shares]
 enabled = true
 server = "$server"
 username = "$username"
-mount_base = "$DEFAULT_MOUNT_BASE"
+mount_base = "$mount_base"
 shares = $shares_array
 EOF
 
   log_success "Configuration TOML mise à jour"
 }
 
-# Read NAS configuration from TOML
 read_nas_config() {
-  local config_server config_username
-
-  config_server=$(parse_toml_value "$TOML_CONFIG" "automations.nas-shares.server" 2>/dev/null || echo "")
-  config_username=$(parse_toml_value "$TOML_CONFIG" "automations.nas-shares.username" 2>/dev/null || echo "")
-
-  # Strip quotes
-  config_server="${config_server//\"/}"
-  config_username="${config_username//\"/}"
-
-  echo "$config_server|$config_username"
-}
-
-# Test mount using nasreco
-test_mount() {
-  log_subsection "Test du montage NAS"
-
-  if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would run: nasreco --verbose"
-    return 0
-  fi
-
-  if ! check_nasreco_available; then
-    log_error "nasreco n'est pas disponible"
-    log_info "Assurez-vous que les dotfiles stow sont installés"
-    return 1
-  fi
-
-  # Call nasreco (MAC_SETUP_RUNNING prevents fastfetch in .zshrc)
-  if MAC_SETUP_RUNNING=1 /bin/zsh -i -c 'nasreco --verbose'; then
-    log_success "Partages montés avec succès"
-    return 0
-  else
-    log_error "Échec du montage"
-    return 1
-  fi
+  local server username
+  server=$(parse_toml_value "$TOML_CONFIG" "automations.nas-shares.server" 2>/dev/null | tr -d "'\"")
+  username=$(parse_toml_value "$TOML_CONFIG" "automations.nas-shares.username" 2>/dev/null | tr -d "'\"")
+  echo "$server|$username"
 }
 
 # ============================================================================
 # Interactive Setup
 # ============================================================================
+
 do_interactive_setup() {
   local existing_server="${1:-}"
   local existing_username="${2:-}"
 
   log_subsection "Configuration interactive du montage NAS"
 
-  # Verify nasreco is available
-  if ! check_nasreco_available; then
-    log_error "nasreco n'est pas disponible"
-    log_info "Les dotfiles stow doivent être installés avant de configurer le NAS"
-    log_info "Exécutez d'abord: ./setup.sh --module stow-dotfiles"
-    return 1
-  fi
-
-  log_success "nasreco disponible (dotfiles installés)"
-
   # Step 1: Get NAS server
   log_step "Configuration du serveur NAS"
-  echo ""
-
   local nas_server
   if [[ -n "$existing_server" ]]; then
     read -r -p "Adresse du serveur NAS [$existing_server]: " nas_server
     nas_server="${nas_server:-$existing_server}"
   else
-    read -r -p "Adresse du serveur NAS (ex: 192.168.1.100, nas.local): " nas_server
+    read -r -p "Adresse du serveur NAS (ex: 192.168.1.100): " nas_server
   fi
 
-  if [[ -z "$nas_server" ]]; then
-    log_error "Serveur NAS requis"
-    return 1
-  fi
-
+  [[ -z "$nas_server" ]] && { log_error "Serveur requis"; return 1; }
   nas_server="${nas_server#smb://}"
   nas_server="${nas_server#//}"
   log_success "Serveur: $nas_server"
 
   # Step 2: Get credentials
   log_step "Configuration des identifiants"
-  echo ""
-
   local nas_username
   if [[ -n "$existing_username" ]]; then
-    read -r -p "Nom d'utilisateur NAS [$existing_username]: " nas_username
+    read -r -p "Nom d'utilisateur [$existing_username]: " nas_username
     nas_username="${nas_username:-$existing_username}"
   else
-    read -r -p "Nom d'utilisateur NAS: " nas_username
+    read -r -p "Nom d'utilisateur: " nas_username
   fi
 
-  if [[ -z "$nas_username" ]]; then
-    log_error "Nom d'utilisateur requis"
-    return 1
-  fi
+  [[ -z "$nas_username" ]] && { log_error "Username requis"; return 1; }
 
   local nas_password
-  read -r -s -p "Mot de passe NAS: " nas_password
+  read -r -s -p "Mot de passe: " nas_password
   echo ""
-
-  if [[ -z "$nas_password" ]]; then
-    log_error "Mot de passe requis"
-    return 1
-  fi
-
+  [[ -z "$nas_password" ]] && { log_error "Password requis"; return 1; }
   log_success "Identifiants configurés"
 
   # Step 3: Select shares
   local selected_shares
-  selected_shares=$(select_shares_interactive "$nas_server" "$nas_username" "$nas_password")
-
-  if [[ -z "$selected_shares" ]]; then
+  selected_shares=$(select_shares_interactive "$nas_server" "$nas_username" "$nas_password") || {
     log_error "Aucun partage sélectionné"
     return 1
-  fi
+  }
 
-  # Step 4: Store credentials in Keychain
+  # Step 4: Store credentials
   log_step "Stockage des identifiants dans le Keychain..."
-
-  if [[ "$DRY_RUN" == "true" ]]; then
-    log_info "[DRY RUN] Would store credentials in Keychain"
-  else
+  if [[ "$DRY_RUN" != "true" ]]; then
     if store_keychain_password "$nas_server" "$nas_username" "$nas_password"; then
-      log_success "Identifiants stockés dans le Keychain"
+      log_success "Identifiants stockés"
     else
-      log_error "Échec du stockage des identifiants"
-      log_info "Essayez manuellement: security add-generic-password -s 'nas-share-$nas_server' -w 'VOTRE_MOT_DE_PASSE'"
+      log_error "Échec du stockage"
+      log_info "Essayez: security add-generic-password -s 'nas-share-$nas_server' -w 'PASSWORD'"
       return 1
     fi
   fi
@@ -495,90 +469,77 @@ do_interactive_setup() {
   # Step 5: Update TOML
   update_toml_config "$nas_server" "$nas_username" "$selected_shares"
 
-  # Step 6: Create and install LaunchAgent
+  # Step 6: Setup LaunchAgent & sleepwatcher
   create_launchagent
   install_launchagent
-
-  # Step 7: Setup sleepwatcher
   echo ""
   setup_sleepwatcher
 
-  # Step 8: Offer to test mount
+  # Step 7: Offer to test
   echo ""
   log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   log_info "  Configuration terminée !"
   log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo ""
 
   if [[ "$DRY_RUN" != "true" ]]; then
-    read -r -p "Voulez-vous monter les partages maintenant ? (O/n): " do_mount
-
+    read -r -p "Monter les partages maintenant ? (O/n): " do_mount
     if [[ -z "$do_mount" ]] || [[ "$do_mount" =~ ^[oOyY]$ ]]; then
       echo ""
-      test_mount
-    else
-      log_info "Les partages seront montés automatiquement au prochain login"
+      log_subsection "Test du montage"
+      mount_all_shares true
     fi
   fi
-
-  return 0
 }
 
 # ============================================================================
-# Main Automation Function
+# Main
 # ============================================================================
-automation_setup_nas_automount() {
-  log_section "Configuration du montage automatique NAS"
 
-  # Check if running with --mount-only flag (legacy support)
+automation_setup_nas_automount() {
+  # Handle --mount flag (called by LaunchAgent/sleepwatcher - NO OUTPUT)
   for arg in "$@"; do
-    if [[ "$arg" == "--mount-only" ]]; then
-      # Just call nasreco
-      if check_nasreco_available; then
-        MAC_SETUP_RUNNING=1 /bin/zsh -i -c 'nasreco --quiet'
-        return $?
-      else
-        log_error "nasreco non disponible"
-        return 1
-      fi
+    if [[ "$arg" == "--mount" ]]; then
+      mount_all_shares false
+      return $?
+    fi
+    if [[ "$arg" == "--mount-verbose" ]]; then
+      mount_all_shares true
+      return $?
     fi
   done
 
-  # Check if already configured
-  local config
-  config=$(read_nas_config)
+  log_section "Configuration du montage automatique NAS"
 
+  local config server username
+  config=$(read_nas_config)
   IFS='|' read -r server username <<< "$config"
 
   if [[ -n "$server" ]] && [[ -n "$username" ]]; then
-    # Configuration exists
-    if [[ "$DRY_RUN" == "true" ]]; then
-      log_info "Configuration NAS détectée (mode dry-run)"
+    # Config exists
+    [[ "$DRY_RUN" == "true" ]] && {
+      log_info "Configuration NAS détectée (dry-run)"
       log_success "Serveur: $server"
       log_success "Utilisateur: $username"
       return 0
-    fi
+    }
 
     echo ""
     log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    log_info "  Configuration NAS détectée"
+    log_info "  Configuration NAS existante"
     log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     log_success "Serveur: $server"
     log_success "Utilisateur: $username"
     echo ""
 
-    if command_exists fzf; then
-      local options=(
-        "1|Réutiliser la configuration|Monte les partages avec nasreco"
-        "2|Reconfigurer|Redemande serveur, credentials et partages"
-        "3|Annuler|Ignore la configuration NAS"
-      )
-
+    if command -v fzf &>/dev/null; then
       local choice
-      choice=$(printf '%s\n' "${options[@]}" | fzf \
+      choice=$(printf '%s\n' \
+        "1|Monter les partages|Monte maintenant avec la config existante" \
+        "2|Reconfigurer|Redemande serveur, credentials et partages" \
+        "3|Annuler|Ne rien faire" | fzf \
         --height=40% \
         --border=rounded \
-        --prompt="Que voulez-vous faire ? " \
+        --prompt="Action ? " \
         --delimiter="|" \
         --with-nth=2 \
         --preview='echo {3}' \
@@ -586,49 +547,30 @@ automation_setup_nas_automount() {
 
       case "$choice" in
         1)
-          # Ensure LaunchAgent exists
-          if [[ ! -f "$LAUNCHAGENT_PLIST" ]]; then
-            create_launchagent
-            install_launchagent
-          fi
-          # Test mount
+          [[ ! -f "$LAUNCHAGENT_PLIST" ]] && { create_launchagent; install_launchagent; }
           echo ""
-          read -r -p "Voulez-vous tester le montage maintenant ? (O/n): " do_test
-          if [[ -z "$do_test" ]] || [[ "$do_test" =~ ^[oOyY]$ ]]; then
-            test_mount
-          fi
+          log_subsection "Montage des partages"
+          mount_all_shares true
           ;;
-        2)
-          do_interactive_setup "$server" "$username"
-          ;;
-        3|"")
-          log_info "Configuration ignorée"
-          ;;
+        2) do_interactive_setup "$server" "$username" ;;
+        *) log_info "Annulé" ;;
       esac
     else
-      # No fzf, simple prompt
-      read -r -p "Voulez-vous reconfigurer ? (o/N): " reconfig
+      read -r -p "Reconfigurer ? (o/N): " reconfig
       if [[ "$reconfig" =~ ^[oOyY]$ ]]; then
         do_interactive_setup "$server" "$username"
       else
-        # Ensure LaunchAgent exists
-        if [[ ! -f "$LAUNCHAGENT_PLIST" ]]; then
-          create_launchagent
-          install_launchagent
-        fi
-        test_mount
+        [[ ! -f "$LAUNCHAGENT_PLIST" ]] && { create_launchagent; install_launchagent; }
+        mount_all_shares true
       fi
     fi
   else
-    # First time setup
     do_interactive_setup
   fi
-
-  return 0
 }
 
 # ============================================================================
-# Standalone Execution
+# Entry Point
 # ============================================================================
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   automation_setup_nas_automount "$@"
