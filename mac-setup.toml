@@ -29,7 +29,7 @@ push_auto_setup_remote = true
 # Node.js version to install via fnm
 # Valid values: "latest", "lts", "22", "20", or specific versions like "22.21.1"
 [nodejs]
-default_version = "latest"
+default_version = "24"
 
 # -----------------------------------------------------------------------------
 # Homebrew Packages (Formula)

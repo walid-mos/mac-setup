@@ -524,27 +524,19 @@ do_interactive_setup() {
   echo ""
   setup_sleepwatcher
 
-  # Step 8: Offer to test
+  # Step 8: Done - shares already mounted by launchctl load (RunAtLoad=true)
   echo ""
   log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   log_info "  Configuration terminee !"
   log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
   if [[ "$DRY_RUN" != "true" ]]; then
-    read -r -p "Monter les partages maintenant ? (O/n): " do_mount
-    if [[ -z "$do_mount" ]] || [[ "$do_mount" =~ ^[oOyY]$ ]]; then
-      echo ""
-      log_subsection "Test du montage"
-      "$MOUNT_SCRIPT_PATH" --verbose
-
-      # Open ~/NAS in Finder and prompt to add to favorites
-      echo ""
-      log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      log_info "  Ajoutez ~/NAS aux favoris Finder"
-      log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      log_info "Glissez le dossier NAS vers 'Favoris' dans la sidebar"
-      open "$HOME/NAS"
-    fi
+    echo ""
+    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_info "  Ajoutez ~/NAS aux favoris Finder"
+    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_info "Glissez le dossier NAS vers 'Favoris' dans la sidebar"
+    open "$HOME/NAS"
   fi
 }
 
@@ -553,20 +545,6 @@ do_interactive_setup() {
 # ============================================================================
 
 automation_setup_nas_automount() {
-  # Handle --mount flag: redirect to standalone script if it exists
-  for arg in "$@"; do
-    if [[ "$arg" == "--mount" ]] || [[ "$arg" == "--mount-verbose" ]]; then
-      if [[ -x "$MOUNT_SCRIPT_PATH" ]]; then
-        [[ "$arg" == "--mount-verbose" ]] && exec "$MOUNT_SCRIPT_PATH" --verbose
-        exec "$MOUNT_SCRIPT_PATH"
-      else
-        log_error "Mount script not found: $MOUNT_SCRIPT_PATH"
-        log_info "Run the setup first to generate the mount script"
-        return 1
-      fi
-    fi
-  done
-
   log_section "Configuration du montage automatique NAS"
 
   # Check for existing configuration in generated script
@@ -595,7 +573,7 @@ automation_setup_nas_automount() {
     if command -v fzf &>/dev/null; then
       local choice
       choice=$(printf '%s\n' \
-        "1|Monter les partages|Monte maintenant avec la config existante" \
+        "1|Verifier LaunchAgent|Recharge le LaunchAgent (monte automatiquement)" \
         "2|Reconfigurer|Redemande serveur, credentials et partages" \
         "3|Annuler|Ne rien faire" | fzf \
         --height=40% \
@@ -608,19 +586,17 @@ automation_setup_nas_automount() {
 
       case "$choice" in
         1)
-          [[ ! -f "$LAUNCHAGENT_PLIST" ]] && { create_launchagent; install_launchagent; }
-          echo ""
-          log_subsection "Montage des partages"
-          "$MOUNT_SCRIPT_PATH" --verbose
+          create_launchagent
+          install_launchagent
           ;;
         2) do_interactive_setup "$existing_server" "$existing_user" "$existing_base" ;;
         *) log_info "Annule" ;;
       esac
     else
-      read -r -p "Reutiliser cette configuration ? (O/n): " reuse
-      if [[ -z "$reuse" ]] || [[ "$reuse" =~ ^[oOyY]$ ]]; then
-        [[ ! -f "$LAUNCHAGENT_PLIST" ]] && { create_launchagent; install_launchagent; }
-        "$MOUNT_SCRIPT_PATH" --verbose
+      read -r -p "Recharger le LaunchAgent ? (O/n): " reload
+      if [[ -z "$reload" ]] || [[ "$reload" =~ ^[oOyY]$ ]]; then
+        create_launchagent
+        install_launchagent
       else
         do_interactive_setup "$existing_server" "$existing_user" "$existing_base"
       fi
