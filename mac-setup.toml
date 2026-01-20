@@ -141,7 +141,8 @@ productivity = [
 # Media and communication
 media = [
   "iina",
-  "discord"
+  "discord",
+  "whatsapp"
 ]
 
 # Development tools
@@ -156,7 +157,8 @@ creative = []
 utilities = [
   "nordvpn",
   "the-unarchiver",
-  "stats"      # Menu bar system monitor
+  "stats",                        # Menu bar system monitor
+  "rectangle"                     # Window management
 ]
 
 # -----------------------------------------------------------------------------
